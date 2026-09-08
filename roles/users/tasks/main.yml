@@ -1,24 +1,24 @@
 ---
-- name: Убедиться, что существует группа {{ users_admin_group }}
+- name: Ensure admin group exists — {{ users_admin_group }}
   ansible.builtin.group:
     name: "{{ users_admin_group }}"
     state: present
     system: true
 
-- name: Завести пользователя {{ users_admin_name }}
+- name: Create user {{ users_admin_name }}
   ansible.builtin.user:
     name: "{{ users_admin_name }}"
     comment: "{{ users_admin_comment }}"
     shell: "{{ users_admin_shell }}"
     groups: "{{ users_admin_group }}"
-    # append, а не замена: на хостах он состоит ещё в docker, archiver и прочих
-    # группах, которые роль знать не обязана.
+    # append, not replace: on these hosts the user also belongs to docker,
+    # archiver and other groups the role has no business knowing about.
     append: true
-    # Пароль не трогаем вообще: вход только по ключу, а сброс пароля
-    # у существующего пользователя мог бы его заблокировать.
+    # The password is left alone entirely: login is by key only, and resetting
+    # the password of an existing user could lock them out.
     state: present
 
-- name: Разложить ssh-ключи
+- name: Install ssh keys
   ansible.posix.authorized_key:
     user: "{{ users_admin_name }}"
     key: "{{ lookup('ansible.builtin.file', 'authorized_keys/' + item) }}"
@@ -26,39 +26,39 @@
     exclusive: false
   loop: "{{ users_admin_authorized_keys }}"
 
-# Файл в /etc/sudoers.d действует только если основной sudoers подключает
-# каталог. У этой директивы две равноправные формы: старая «#includedir»
-# (решётка здесь НЕ комментарий — так исторически сделано в sudo) и новая
-# «@includedir». Их легко перепутать с закомментированной строкой и
-# «исправить» в неработающий вид, поэтому роль ничего не правит, а только
-# проверяет — и падает громко, если подключения нет.
-- name: Проверить, что /etc/sudoers подключает каталог sudoers.d
+# A file under /etc/sudoers.d only takes effect if the main sudoers includes the
+# directory. That directive has two equally valid forms: the old "#includedir"
+# (the hash is NOT a comment here — that is how sudo has always spelled it) and
+# the new "@includedir". They are easy to mistake for a commented-out line and
+# "fix" into something that does not work, so the role changes nothing and only
+# checks — failing loudly if the include is missing.
+- name: Check that /etc/sudoers includes the sudoers.d directory
   ansible.builtin.command: grep -Eq '^[#@]includedir[[:space:]]+/etc/sudoers\.d' /etc/sudoers
   changed_when: false
   register: users_includedir
   failed_when: users_includedir.rc != 0
-  # Задача только читает файл, поэтому выполняется и в check-режиме: иначе
-  # command пропускался бы, и --check не поймал бы отсутствие подключения.
+  # This task only reads the file, so it runs in check mode too: otherwise
+  # command would be skipped and --check would miss a missing include.
   check_mode: false
   when: users_manage_sudoers | bool
 
-- name: Положить правило беспарольного sudo
+- name: Install the passwordless sudo rule
   ansible.builtin.copy:
     dest: "/etc/sudoers.d/{{ users_sudoers_file }}"
     content: |
-      # Управляется Ansible (roles/users). Правки руками будут затёрты.
+      # Managed by Ansible (roles/users). Manual edits will be overwritten.
       {% for rule in users_sudoers_rules %}
       {{ rule }}
       {% endfor %}
     owner: root
     group: root
     mode: "0440"
-    # Без validate опечатка здесь лишает sudo всех сразу, а хост доступен
-    # только по ssh. visudo -cf проверяет файл ДО того, как он встанет на место.
+    # Without validate a typo here takes sudo away from everyone at once, on a
+    # host reachable only over ssh. visudo -cf checks the file BEFORE it lands.
     validate: visudo -cf %s
   when: users_manage_sudoers | bool
 
-- name: Убрать исторические дубли того же правила
+- name: Remove historical duplicates of the same rule
   ansible.builtin.file:
     path: "/etc/sudoers.d/{{ item }}"
     state: absent

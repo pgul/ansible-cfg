@@ -1,11 +1,11 @@
 ---
-# Разведка: ничего не меняет, только показывает, что за машины у нас есть.
-- name: Собрать факты о хостах
+# Reconnaissance: changes nothing, just shows what machines we have.
+- name: Gather host facts
   hosts: all
   become: false
   gather_facts: true
   tasks:
-    - name: Показать сводку
+    - name: Show summary
       ansible.builtin.debug:
         msg: >-
           {{ inventory_hostname }}:

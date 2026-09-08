@@ -1,31 +1,32 @@
 ---
-# Одноразовая подготовка хоста. Два случая:
+# One-off host preparation. Two cases:
 #
-# 1. Совсем новый сервер, где пользователя gul ещё нет. Ansible пока не может
-#    ходить туда как gul, поэтому подключаемся root'ом:
+# 1. A brand new server where the gul user does not exist yet. Ansible cannot
+#    log in as gul, so connect as root:
 #       make bootstrap HOSTS=newhost REMOTE_USER=root
-#    После этого обычный `make apply HOSTS=newhost` уже работает как gul.
+#    After that a plain `make apply HOSTS=newhost` works as gul.
 #
-# 2. Fedora, где модулю dnf не хватает биндингов (см. задачу ниже):
+# 2. Fedora, where the dnf module is missing its bindings (see the task below):
 #       make bootstrap HOSTS=happy
 #
-# Это НЕ часть site.yml намеренно: здесь есть задача, которую нельзя выполнить
-# в check-режиме, а site.yml должен оставаться пригодным для честного --check.
-- name: Подготовить хост к управлению Ansible
+# Deliberately not part of site.yml: there is a task here that cannot run in
+# check mode, and site.yml must stay honestly --check-able.
+- name: Prepare a host for Ansible management
   hosts: all
   become: true
   gather_facts: true
 
   roles:
-    # Чтобы на новом сервере появился gul с ключом и беспарольным sudo.
-    # Роль идемпотентна, так что на уже настроенном хосте это пустой прогон.
+    # So that a new server gets gul with a key and passwordless sudo.
+    # The role is idempotent, so on an already configured host this is a no-op.
     - users
 
   tasks:
-    # На Fedora 41+ пакетный менеджер — dnf5, и модуль dnf ходит в него через
-    # python3-libdnf5. В обычном прогоне модуль доставит биндинги сам, но в
-    # check-режиме не может — и весь прогон падает на первом же хосте.
-    - name: Установить python3-libdnf5 (биндинги dnf5 для модуля dnf)
+    # On Fedora 41+ the package manager is dnf5, and the dnf module talks to it
+    # through python3-libdnf5. In a normal run the module installs the bindings
+    # itself, but in check mode it cannot — and the whole run dies on the first
+    # such host.
+    - name: Install python3-libdnf5 (dnf5 bindings for the dnf module)
       ansible.builtin.raw: rpm -q python3-libdnf5 || dnf -y install python3-libdnf5
       register: bootstrap_libdnf5
       changed_when: "'Complete!' in bootstrap_libdnf5.stdout"

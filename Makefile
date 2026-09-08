@@ -1,33 +1,33 @@
-# Тонкая обёртка над ansible из локального venv.
-# HOSTS=<pattern> ограничивает прогон: make check HOSTS=srv-misc-1
+# Thin wrapper around ansible from the local venv.
+# HOSTS=<pattern> narrows a run: make check HOSTS=oc
 ANSIBLE  := .venv/bin/ansible
 PLAYBOOK := .venv/bin/ansible-playbook
 LINT     := .venv/bin/ansible-lint
 HOSTS    ?= all
 LIMIT    := --limit '$(HOSTS)'
-# REMOTE_USER=root — для совсем нового сервера, где пользователя gul ещё нет.
+# REMOTE_USER=root — for a brand new server where the gul user does not exist yet.
 REMOTE_USER ?=
 AS       := $(if $(REMOTE_USER),--user '$(REMOTE_USER)',)
 
 .PHONY: deps ping facts lint bootstrap check apply
 
-deps:            ## Поставить collections из requirements.yml
+deps:            ## Install collections from requirements.yml
 	.venv/bin/ansible-galaxy collection install -r requirements.yml
 
-ping:            ## Проверить связность
+ping:            ## Check connectivity
 	$(ANSIBLE) $(HOSTS) -m ansible.builtin.ping
 
-facts:           ## Показать, что за серверы в инвентаре
+facts:           ## Show what the inventory hosts actually are
 	$(PLAYBOOK) playbooks/facts.yml $(LIMIT)
 
-bootstrap:       ## Разовая подготовка хоста; REMOTE_USER=root для нового (не check-safe)
-	$(PLAYBOOK) playbooks/bootstrap.yml $(LIMIT) $(AS)
-
-lint:            ## Статическая проверка
+lint:            ## Static checks
 	$(LINT)
 
-check:           ## Прогон вхолостую с диффом — ВСЕГДА делать перед apply
+bootstrap:       ## One-off host preparation; REMOTE_USER=root for a new one (not check-safe)
+	$(PLAYBOOK) playbooks/bootstrap.yml $(LIMIT) $(AS)
+
+check:           ## Dry run with diff — ALWAYS do this before apply
 	$(PLAYBOOK) site.yml $(LIMIT) --check --diff
 
-apply:           ## Применить по-настоящему
+apply:           ## Apply for real
 	$(PLAYBOOK) site.yml $(LIMIT) --diff

@@ -2,7 +2,7 @@
 galaxy_info:
   role_name: local_scripts
   author: gul
-  description: Собственные скрипты в /usr/local/bin, одинаковые на всех хостах.
+  description: Own scripts in /usr/local/bin, identical on every host.
   license: MIT
   min_ansible_version: "2.15"
   platforms:

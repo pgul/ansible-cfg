@@ -1,23 +1,23 @@
 ---
-- name: Установить агент
+- name: Install the agent
   ansible.builtin.package:
     name: "{{ zabbix_agent_package }}"
     state: present
 
-# Все JSON-RPC проверки заканчиваются на «| jq», и без него UserParameter
-# возвращает ошибку вместо значения. На ho так и было: jq не установлен,
-# и обе проверки молча не работали.
-- name: Установить jq, если настроены JSON-RPC проверки
+# Every JSON-RPC check ends in "| jq", and without it the UserParameter returns
+# an error instead of a value. That was the situation on ho: jq was not
+# installed and both of its checks quietly did not work.
+- name: Install jq when JSON-RPC checks are configured
   ansible.builtin.package:
     name: jq
     state: present
   when: zabbix_agent_rpc_checks | length > 0
 
-# Пакет создаёт этот каталог сам, но на spelik агент писал в /var/log/zabbix,
-# а logrotate ротировал /var/log/zabbix-agent — то есть лог не ротировался
-# вовсе. Шаблон приводит путь к общему, а задача гарантирует, что каталог
-# существует до того, как агент попробует туда писать.
-- name: Обеспечить каталог для лога
+# The package creates this directory itself, but on spelik the agent wrote to
+# /var/log/zabbix while logrotate rotated /var/log/zabbix-agent — so the log was
+# never rotated at all. The template unifies the path, and this task guarantees
+# the directory exists before the agent tries to write there.
+- name: Ensure the log directory exists
   ansible.builtin.file:
     path: "{{ zabbix_agent_log_file | dirname }}"
     state: directory
@@ -25,7 +25,7 @@
     group: zabbix
     mode: "0755"
 
-- name: Обеспечить каталог для UserParameter
+- name: Ensure the UserParameter directory exists
   ansible.builtin.file:
     path: "{{ zabbix_agent_include_dir }}"
     state: directory
@@ -33,36 +33,36 @@
     group: root
     mode: "0755"
 
-- name: Разложить UserParameter
+- name: Install UserParameter definitions
   ansible.builtin.template:
     src: custom.conf.j2
     dest: "{{ zabbix_agent_include_dir }}/custom.conf"
     owner: root
     group: root
     mode: "0644"
-  notify: Перезапустить zabbix-agent
+  notify: Restart zabbix-agent
 
-# На части хостов Include указывал на /etc/zabbix/zabbix_agentd.d. После
-# переезда на общий каталог старый файл остался бы лежать и, если Include
-# когда-нибудь вернут, задвоил бы те же ключи.
-- name: Убрать custom.conf из прежних include-каталогов
+# On some hosts Include pointed at /etc/zabbix/zabbix_agentd.d. After moving to
+# the shared directory the old file would linger and, if Include were ever
+# pointed back, would define the same keys twice.
+- name: Remove custom.conf from former include directories
   ansible.builtin.file:
     path: "{{ item }}/custom.conf"
     state: absent
   loop: "{{ zabbix_agent_stale_include_dirs }}"
   when: item != zabbix_agent_include_dir
-  notify: Перезапустить zabbix-agent
+  notify: Restart zabbix-agent
 
-- name: Разложить основной конфиг
+- name: Install the main config
   ansible.builtin.template:
     src: zabbix_agentd.conf.j2
     dest: "{{ zabbix_agent_config }}"
     owner: root
     group: root
     mode: "0644"
-  notify: Перезапустить zabbix-agent
+  notify: Restart zabbix-agent
 
-- name: Включить и запустить службу
+- name: Enable and start the service
   ansible.builtin.service:
     name: "{{ zabbix_agent_service }}"
     state: started

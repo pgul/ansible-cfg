@@ -1,13 +1,13 @@
 ---
-# Главный плейбук. Роли добавляем сюда по мере готовности.
-# Запуск: make check   (ничего не меняет)  →  make apply
-- name: Базовая конфигурация серверов
+# Main playbook. Roles are added here as they become ready.
+# Run: make check   (changes nothing)  →  make apply
+- name: Base server configuration
   hosts: all
   become: true
   gather_facts: true
   roles:
-    # users идёт первой: всё остальное опирается на то, что админский
-    # пользователь и его sudo уже в нужном состоянии.
+    # users comes first: everything else assumes the admin user and their sudo
+    # are already in the expected state.
     - users
     - common
     - local_scripts

@@ -1,15 +1,15 @@
 ---
-# Подключение. Пользователь и ключи берутся из ~/.ssh/config; здесь только то,
-# что ssh не знает.
+# Connection. The user and keys come from ~/.ssh/config; only what ssh does not
+# know goes here.
 ansible_user: gul
 
-# sudo без пароля есть везде, поэтому пароль не спрашиваем.
-# become включается в плеях (site.yml), а не глобально — см. ansible.cfg.
+# Passwordless sudo is available everywhere, so no password is requested.
+# become is enabled in the plays (site.yml), not globally — see ansible.cfg.
 ansible_become_method: sudo
 
-# --- Переменные ролей ---
-# Таймзону здесь НЕ задаём: дефолт роли уже UTC, но записанный так, как его
-# пишет каждая ОС (Etc/UTC на Ubuntu, UTC на Fedora). Серверы держим на UTC
-# осознанно — логи с разных машин сопоставимы, и cron не выполняет задание
-# дважды (или ни разу) при переводе часов.
+# --- Role variables ---
+# The timezone is deliberately NOT set here: the role default is already UTC,
+# spelled the way each OS spells it (Etc/UTC on Ubuntu, UTC on Fedora). Servers
+# are kept on UTC on purpose — logs from different machines line up, and cron
+# never runs a job twice (or not at all) across a clock change.
 common_base_packages_extra: []

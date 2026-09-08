@@ -1,5 +1,5 @@
 # {{ ansible_managed }}
-# Правки руками будут затёрты. Меняй host_vars/{{ inventory_hostname }}.yml.
+# Manual edits will be overwritten. Change host_vars/{{ inventory_hostname }}.yml.
 {% for name, port in zabbix_agent_rpc_checks | dictsort %}
 UserParameter={{ name }}[*],curl -s -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","account":1,"method":"$1","params":[]}' http://127.0.0.1:{{ port }} | jq .result.$2
 {% endfor %}

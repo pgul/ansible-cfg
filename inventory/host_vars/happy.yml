@@ -1,29 +1,29 @@
 ---
-# На happy синхронизацию времени делает ntpsec (ntpd), а не chrony.
-# Роль common это уважает и просто следит, что служба включена.
+# On happy time is synchronised by ntpsec (ntpd), not chrony. The common role
+# respects that and merely keeps the service enabled.
 common_time_sync_service: ntpd
 common_time_sync_packages: [ntpsec]
 
-# sudoers на happy роль не трогает.
+# The role does not touch sudoers on happy.
 #
-# Причина конкретная: в группе wheel там состоят root, gul и tiger. Общее
-# правило роли «%wheel ALL=(ALL) NOPASSWD:ALL» выдало бы беспарольный root
-# ещё и пользователю tiger, который сейчас его не имеет. Расширять чужой
-# доступ ради единообразия — не то, ради чего затевался этот репозиторий.
+# The reason is specific: the wheel group there contains root, gul and tiger.
+# The role's shared rule "%wheel ALL=(ALL) NOPASSWD:ALL" would hand passwordless
+# root to tiger as well, who does not have it today. Widening somebody else's
+# access for the sake of uniformity is not what this repo is for.
 #
-# Сам gul на happy уже имеет NOPASSWD персональным правилом в /etc/sudoers
-# (там же десяток тонких правил для zabbix, backup и rsync), так что роль
-# здесь ничего не добавила бы, кроме риска.
+# gul already has NOPASSWD on happy via a personal rule in /etc/sudoers (next to
+# a dozen fine-grained rules for zabbix, backup and rsync), so the role would
+# add nothing here except risk.
 #
-# Если tiger всё-таки должен иметь root — убрать этот флаг и раскатать общее
-# правило; если нет — оставить как есть.
+# If tiger is in fact supposed to have root — drop this flag and roll out the
+# shared rule; if not, leave it as is.
 users_manage_sudoers: false
 
-# Агент Zabbix на happy роль тоже не трогает.
+# The role does not touch the Zabbix agent on happy either.
 #
-# Его конфиг лежит по старому пути /etc/zabbix_agentd.conf, без Include, и
-# содержит два десятка UserParameter (сенсоры, mdadm, ups, mysql, ping),
-# а также SourceIP, ListenIP и StartAgents, которых нет больше нигде.
-# Общий шаблон это всё снёс бы. Плюс happy — сам Zabbix-сервер версии 7.4,
-# тогда как на Ubuntu-хостах агент 7.0.
+# Its config lives at the old path /etc/zabbix_agentd.conf, has no Include, and
+# holds two dozen UserParameter entries (sensors, mdadm, ups, mysql, ping) plus
+# SourceIP, ListenIP and StartAgents, which exist nowhere else. The shared
+# template would wipe all of it. On top of that happy is itself a Zabbix server
+# running 7.4, while the Ubuntu hosts run agent 7.0.
 zabbix_agent_manage: false

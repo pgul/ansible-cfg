@@ -1,36 +1,36 @@
 ---
-# Выключается на хостах, чей конфиг слишком своеобразен для общего шаблона
-# (см. host_vars/happy.yml).
+# Turned off on hosts whose config is too idiosyncratic for the shared template
+# (see host_vars/happy.yml).
 zabbix_agent_manage: true
 
 zabbix_agent_package: zabbix-agent
 zabbix_agent_service: zabbix-agent
 zabbix_agent_config: /etc/zabbix/zabbix_agentd.conf
 
-# Каталог для UserParameter. Берём тот, что кладёт сам пакет Debian;
-# на части хостов исторически использовался /etc/zabbix/zabbix_agentd.d.
+# Directory for UserParameter files. We use the one the Debian package ships;
+# some hosts historically used /etc/zabbix/zabbix_agentd.d.
 zabbix_agent_include_dir: /etc/zabbix/zabbix_agentd.conf.d
 zabbix_agent_stale_include_dirs:
   - /etc/zabbix/zabbix_agentd.d
 
-# Кому агент отвечает на пассивные проверки. Это список доверенных адресов:
-# агент сверяет IP подключающегося с результатом разрешения этих имён.
+# Who the agent answers passive checks for. This is a list of trusted addresses:
+# the agent compares the peer's IP against the resolution of these names.
 #
-# Раньше сюда были вписаны ещё 213.133.164.6 (its.happy.kiev.ua) и
-# 91.225.123.133 (osokorki.happy.kiev.ua). Если с них кто-то опрашивает
-# агентов, вернуть адрес в этот список — и мониторинг оттуда снова заработает.
+# These lists used to also contain 213.133.164.6 (its.happy.kiev.ua) and
+# 91.225.123.133 (osokorki.happy.kiev.ua). If anything polls the agents from
+# there, put the address back here and monitoring from it works again.
 zabbix_agent_servers:
-  - 127.0.0.1              # для локального zabbix_get и для хостов-серверов
+  - 127.0.0.1              # for local zabbix_get and for hosts that are servers
   - zabbix.happy.kiev.ua   # = happy.kiev.ua, 213.133.161.33
   - zabbix.spelik.com      # = oc, 129.159.205.15
 
-# Куда агент сам ходит за активными проверками.
+# Where the agent goes itself to fetch active checks.
 zabbix_agent_servers_active:
   - zabbix.happy.kiev.ua
   - zabbix.spelik.com
 
-# Должен совпадать с именем хоста в самом Zabbix, иначе активные проверки
-# не найдут своих элементов данных.
+# Must match the host name in Zabbix itself, otherwise active checks will not
+# find their items.
 zabbix_agent_hostname: "{{ inventory_hostname }}"
 
 zabbix_agent_pid_file: /run/zabbix/zabbix_agentd.pid
@@ -39,9 +39,9 @@ zabbix_agent_log_file_size: 0
 
 # --- UserParameter ---
 #
-# Проверки через JSON-RPC на localhost отличаются только портом, поэтому
-# задаются словарём «имя: порт», а не одиннадцатью почти одинаковыми строками.
+# The JSON-RPC-over-loopback checks differ only by port, so they are given as a
+# "name: port" dict rather than eleven nearly identical lines.
 zabbix_agent_rpc_checks: {}
 
-# Всё остальное — целиком, строкой вида «Ключ,команда».
+# Everything else verbatim, as "Key,command" strings.
 zabbix_agent_user_parameters: []

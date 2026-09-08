@@ -2,7 +2,7 @@
 galaxy_info:
   role_name: common
   author: gul
-  description: Базовая настройка сервера — пакеты, время, безопасные дефолты.
+  description: Baseline server setup — packages, time, safe defaults.
   license: MIT
   min_ansible_version: "2.15"
   platforms:

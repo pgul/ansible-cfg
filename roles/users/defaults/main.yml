@@ -1,24 +1,25 @@
 ---
-# Административный пользователь. uid НЕ фиксируем: на разных хостах он уже
-# разный (1000 и 1002), а менять uid у существующего пользователя — это
-# сломать владельца всех его файлов.
+# The admin user. We do NOT pin the uid: it already differs across hosts
+# (1000 and 1002), and changing the uid of an existing user means breaking
+# ownership of every file they own.
 users_admin_name: gul
 users_admin_shell: /bin/bash
 users_admin_comment: Pavel Gulchuk
 
-# Группа, членство в которой даёт sudo. В Debian это sudo, в RedHat — wheel.
+# The group whose membership grants sudo: sudo on Debian, wheel on RedHat.
 users_admin_group_by_os:
   Debian: sudo
   RedHat: wheel
 users_admin_group: "{{ users_admin_group_by_os[ansible_facts.os_family] }}"
 
-# Публичные ключи из files/authorized_keys/. Роль их только ДОБАВЛЯЕТ:
-# exclusive не включаем, потому что на happy лежат девять ключей, среди них
-# ограниченные command="..." для rsync — затирать их нельзя.
-# По умолчанию только ed25519: он и так есть на всех шести хостах, а
-# gul-rsa.pub — это 2048-битный RSA, который лежит лишь на части машин.
-# Раскатывать его на остальные ради единообразия смысла нет; если понадобится,
-# файл в репозитории есть — достаточно вернуть строку в список.
+# Public keys from files/authorized_keys/. The role only ADDS them: exclusive is
+# off, because happy carries nine keys, some of them restricted command="..."
+# entries for rsync, and those must not be wiped.
+#
+# Only ed25519 by default: it is already present on all six hosts, whereas
+# gul-rsa.pub is a 2048-bit RSA key that exists on only some of them. There is
+# no point pushing it to the rest for the sake of uniformity; if it is ever
+# needed, the file is in the repo — just put the line back.
 users_admin_authorized_keys:
   - gul.pub
   # - gul-rsa.pub
@@ -27,13 +28,13 @@ users_admin_authorized_keys:
 users_manage_sudoers: true
 users_sudoers_file: 10-nopasswd
 
-# Только правило NOPASSWD. Defaults !env_reset сознательно не раскатываем:
-# он снимает очистку окружения для всех членов группы sudo/wheel сразу,
-# а не только для одного пользователя.
+# The NOPASSWD rule only. "Defaults !env_reset" is deliberately not rolled out:
+# it disables environment scrubbing for every member of sudo/wheel at once,
+# not just for one user.
 users_sudoers_rules:
   - "%{{ users_admin_group }}\tALL=(ALL) NOPASSWD:ALL"
 
-# Файлы в /etc/sudoers.d, которые роль удаляет ПОСЛЕ того, как её собственный
-# файл создан и прошёл visudo. Здесь — исторические дубли того же правила.
+# Files under /etc/sudoers.d that the role removes AFTER its own file has been
+# created and passed visudo. These are historical duplicates of the same rule.
 users_sudoers_obsolete:
   - 99-nopasswd

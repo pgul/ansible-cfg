@@ -1,13 +1,14 @@
 ---
-# ВАЖНО про приоритеты: всё, что ниже, лежит в defaults/ — это САМЫЙ НИЗКИЙ
-# приоритет в Ansible, поэтому любой host_vars/ или group_vars/ это перебьёт.
-# Если бы отличия ОС лежали в roles/common/vars/<os_family>.yml, они бы,
-# наоборот, молча перебили host_vars — это частая и неочевидная ловушка.
-# Поэтому «развилка по ОС» здесь сделана словарём, а не отдельными файлами.
+# IMPORTANT, about variable precedence: everything below lives in defaults/,
+# which is the LOWEST precedence in Ansible, so any host_vars/ or group_vars/
+# overrides it freely. Had the OS differences lived in roles/common/vars/
+# <os_family>.yml they would instead have silently overridden host_vars —
+# a common and non-obvious trap. Hence the per-OS dicts rather than separate
+# vars files.
 
-# Debian и RedHat записывают одну и ту же зону разными именами: Ubuntu держит
-# Etc/UTC, Fedora — UTC. Если задать одно значение на всех, модель времени
-# будет «изменяться» при каждом прогоне на половине парка.
+# Debian and RedHat record the same zone under different names: Ubuntu keeps
+# Etc/UTC, Fedora keeps UTC. A single value for everyone would make this task
+# report a change on every run across half the fleet.
 common_timezone_by_os:
   Debian: Etc/UTC
   RedHat: UTC
@@ -39,22 +40,22 @@ common_base_packages_by_os:
 common_base_packages: "{{ common_base_packages_by_os[ansible_facts.os_family] }}"
 common_base_packages_extra: []
 
-# Служба синхронизации времени. Роль её только включает — она не навязывает
-# конкретную реализацию, потому что на happy уже стоит ntpsec, и выпиливать
-# рабочий ntpd ради chrony смысла нет.
+# Time synchronisation service. The role only enables it — it does not impose a
+# particular implementation, because happy already runs ntpsec and there is no
+# point ripping out a working ntpd in favour of chrony.
 common_time_sync_service_by_os:
   Debian: systemd-timesyncd
   RedHat: chronyd
 common_time_sync_service: "{{ common_time_sync_service_by_os[ansible_facts.os_family] }}"
 
-# Пакеты, нужные этой службе. Пусто там, где она часть systemd.
+# Packages that service needs. Empty where it ships as part of systemd.
 common_time_sync_packages_by_os:
   Debian: []
   RedHat: [chrony]
 common_time_sync_packages: "{{ common_time_sync_packages_by_os[ansible_facts.os_family] }}"
 
-# В контейнере часы принадлежат хосту: systemd-timesyncd там не запускается
-# (ConditionVirtualization=!container), и попытка его стартовать даёт
-# «изменение», которое никогда не сходится. Поэтому в контейнерах временем
-# не управляем вовсе.
+# Inside a container the clock belongs to the host: systemd-timesyncd will not
+# start there (ConditionVirtualization=!container), and trying to start it
+# produces a "change" that never converges. So in containers we do not manage
+# time at all.
 common_manage_time_sync: "{{ 'container' not in ansible_facts.virtualization_tech_guest | default([]) }}"
