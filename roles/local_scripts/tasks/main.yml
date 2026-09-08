@@ -1,0 +1,9 @@
+---
+- name: Разложить скрипты в {{ local_scripts_dir }}
+  ansible.builtin.copy:
+    src: "bin/{{ item }}"
+    dest: "{{ local_scripts_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ local_scripts_files }}"

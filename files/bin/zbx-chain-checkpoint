@@ -1,0 +1,165 @@
+#!/bin/sh
+# Hash of a time-anchored checkpoint block, so that nodes polled at different
+# moments still answer about the same block and their answers can be compared
+# directly.
+#
+#   zbx-chain-checkpoint <chain> height|hash|fingerprint <period> <lag>
+#
+# The checkpoint is the highest block of the node's main chain whose timestamp
+# is at or before
+#
+#   T = floor(now / period) * period - lag
+#
+# T is the same on every node -- they all run ntpd -- so the answer is a
+# function of the chain alone and nothing has to be polled simultaneously.
+#
+# lag keeps the checkpoint far enough behind the tip that the normal
+# disagreement about the last few blocks never shows up in it, and deep enough
+# that a reorganisation cannot reach it. period is how often the checkpoint
+# moves, and it moves on the wall clock rather than with the block rate: on
+# these chains a block takes anywhere between 10 and 1000 seconds, so
+# anchoring on a height that is a multiple of N would move the checkpoint
+# every 100 seconds at worst and every three hours at best.
+#
+# The node is asked over JSON-RPC on the loopback rather than through its cli,
+# because on some hosts the daemon runs in a container and its cli only exists
+# inside; the RPC port is reachable either way.
+#
+# Block timestamps on these chains increase strictly, so the checkpoint is
+# found by bisection. The answer is cached per (chain, period, lag) and the
+# cached height is the lower bound of the next search: in the steady state one
+# poll per period does about ten requests and every other poll does none.
+
+set -eu
+
+usage() {
+    echo "usage: ${0##*/} <chain> height|hash|fingerprint <period> <lag>" >&2
+    exit 1
+}
+
+[ $# -eq 4 ] || usage
+chain=$1 field=$2 period=$3 lag=$4
+
+case $chain in
+    qecr)         port=9667  ;;
+    erub)         port=9778  ;;
+    qbtc-testnet) port=19556 ;;
+    *) echo "unknown chain: $chain" >&2; exit 1 ;;
+esac
+
+url="http://127.0.0.1:$port/"
+
+# Credentials, for a node whose RPC asks for them: one line per chain in
+# /etc/zabbix/chain-checkpoint.conf (mode 0600, owned by the agent's user)
+#
+#     qecr   zabbix:secret
+#
+# The line is handed to curl through -K -, so the password never shows up in
+# ps output or in the shell history.
+conf=${ZBX_CHECKPOINT_CONF:-/etc/zabbix/chain-checkpoint.conf}
+auth=
+if [ -r "$conf" ]; then
+    auth=$(awk -v c="$chain" '$1 == c { print $2; exit }' "$conf")
+fi
+
+state_dir=${ZBX_CHECKPOINT_STATE_DIR:-/var/lib/zabbix}
+state="$state_dir/chain-checkpoint.$chain.$period.$lag"
+
+# One JSON-RPC call, printing .result. Every way this can go wrong has to end
+# in a non-zero exit and no output on stdout: an item that quietly answers 0
+# or an empty string would be compared against the other nodes as if it were a
+# real checkpoint, and a wrong answer here is worse than no answer at all.
+rpc() {
+    body=$(printf '{"jsonrpc":"1.0","id":"zbx-chain-checkpoint","method":"%s","params":%s}' "$1" "$2")
+
+    if [ -n "$auth" ]; then
+        reply=$(printf 'user = "%s"\n' "$auth" |
+                curl -sS -K - --max-time 10 -w '\n%{http_code}' \
+                     -H 'content-type: text/plain' --data-binary "$body" "$url")
+    else
+        reply=$(curl -sS --max-time 10 -w '\n%{http_code}' \
+                     -H 'content-type: text/plain' --data-binary "$body" "$url")
+    fi
+
+    code=$(printf '%s' "$reply" | tail -n 1)
+    json=$(printf '%s' "$reply" | sed '$d')
+
+    case $code in
+        # A bitcoin-style RPC reports a method error as 500 with the error in
+        # the body, so that one is parsed rather than rejected.
+        200|500) ;;
+        401|403) echo "${0##*/}: $1: rpc $code, credentials for $chain in $conf?" >&2
+                 return 1 ;;
+        *)       echo "${0##*/}: $1: rpc http $code" >&2
+                 return 1 ;;
+    esac
+
+    # -e so that a null result fails instead of printing "null".
+    printf '%s' "$json" | jq -e -r '
+        if .error != null
+        then ("rpc " + (.error.message // (.error | tostring))) | halt_error(1)
+        else .result end'
+}
+
+# Timestamp of the block at a height. Both calls go through an assignment, so
+# a failing one stops the script instead of feeding an empty string to test.
+btime() {
+    bt_hash=$(rpc getblockhash "[$1]")
+    bt_header=$(rpc getblockheader "[\"$bt_hash\"]")
+    printf '%s' "$bt_header" | jq -e -r .time
+}
+
+now=$(date +%s)
+t=$(( now / period * period - lag ))
+
+cached_t=0 cached_h=0 cached_hash=
+if [ -r "$state" ]; then
+    read -r cached_t cached_h cached_hash < "$state" || true
+    case "$cached_t:$cached_h" in
+        *[!0-9:]*|:*|*:) cached_t=0 cached_h=0 cached_hash= ;;
+    esac
+fi
+
+if [ "$cached_t" = "$t" ] && [ -n "$cached_hash" ]; then
+    # Still the same period: the cached answer is the answer.
+    h=$cached_h hash=$cached_hash
+else
+    # T only ever grows, and so does the checkpoint height, so the cached
+    # height is a lower bound for this search -- unless the clock or the chain
+    # went backwards, in which case start from the genesis block.
+    lo=0
+    if [ "$cached_t" -lt "$t" ] && [ "$cached_h" -gt 0 ]; then
+        lo_time=$(btime "$cached_h")
+        [ "$lo_time" -le "$t" ] && lo=$cached_h
+    fi
+
+    hi=$(rpc getblockcount '[]')
+
+    # The highest height in [lo, hi] whose block is at or before T.
+    while [ "$lo" -lt "$hi" ]; do
+        mid=$(( (lo + hi + 1) / 2 ))
+        mid_time=$(btime "$mid")
+        if [ "$mid_time" -le "$t" ]; then lo=$mid; else hi=$(( mid - 1 )); fi
+    done
+
+    h=$lo
+    hash=$(rpc getblockhash "[$h]")
+
+    # A state directory that cannot be written to costs speed, not answers.
+    printf '%s %s %s\n' "$t" "$h" "$hash" > "$state.new" 2>/dev/null &&
+        mv "$state.new" "$state" 2>/dev/null || true
+fi
+
+case $field in
+    height) echo "$h" ;;
+    hash)   echo "$hash" ;;
+
+    # The last 12 hex digits of the hash as a number. Zabbix evaluates
+    # calculated items in double, where integers are exact only up to 2^53: a
+    # full 64-bit fingerprint would round, and max() - min() over two hashes
+    # that really differ could come out as zero. 48 bits are exact, and two
+    # different blocks collide in them with probability 2^-48.
+    fingerprint) printf '%d\n' "0x$(printf %s "$hash" | tail -c 12)" ;;
+
+    *) usage ;;
+esac

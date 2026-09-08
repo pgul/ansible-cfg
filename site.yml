@@ -10,5 +10,6 @@
     # пользователь и его sudo уже в нужном состоянии.
     - users
     - common
+    - local_scripts
     - role: zabbix_agent
       when: zabbix_agent_manage | bool

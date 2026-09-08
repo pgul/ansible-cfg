@@ -82,8 +82,9 @@ roles/<name>/
 | 2 | `users`               | пользователь gul, ssh-ключи, беспарольный sudo           | есть   |
 | 4 | `auto_updates`        | `unattended-upgrades` (Ubuntu) / `dnf-automatic` (Fedora)| —      |
 | 3 | `zabbix_agent`        | пакет из дистрибутива, конфиг шаблоном                   | есть   |
-| 5 | `cron_jobs`           | скрипты в `/usr/local/sbin` + systemd timers или cron    | —      |
-| 6 | `firewall`            | iptables + iptables-persistent / iptables-services       | —      |
+| 5 | `local_scripts`       | собственные скрипты в `/usr/local/bin`                   | есть   |
+| 6 | `cron_jobs`           | запуск этих скриптов: systemd timers или cron            | —      |
+| 7 | `firewall`            | iptables + iptables-persistent / iptables-services       | —      |
 
 Бэкап настроен вручную и в Ansible пока не заводится.
 
@@ -126,6 +127,12 @@ roles/<name>/
 `213.133.164.6` (`its.happy.kiev.ua`) и `91.225.123.133`
 (`osokorki.happy.kiev.ua`) — если с этих адресов кто-то опрашивает агентов,
 вернуть их в `roles/zabbix_agent/defaults/main.yml`.
+
+Скрипт `zbx-chain-checkpoint` лежит в `files/bin/` и раскладывается ролью
+`local_scripts` на все шесть хостов. Она отдельная, а не часть `zabbix_agent`,
+именно потому что на happy та роль выключена, а скрипт нужен и там. Учётные
+данные, которые скрипт читает из `/etc/zabbix/chain-checkpoint.conf`, репозиторий
+не трогает — это кандидат в ansible-vault, когда до него дойдут руки.
 
 UserParameter'ы живут в `host_vars/<хост>.yml`. Проверки через JSON-RPC на
 localhost задаются словарём `zabbix_agent_rpc_checks` («имя: порт») — они

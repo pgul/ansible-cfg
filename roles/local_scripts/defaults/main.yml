@@ -1,0 +1,7 @@
+---
+# Скрипты из files/bin/, которые должны лежать на каждом хосте.
+# Роль намеренно отдельная, а не часть zabbix_agent: на happy та роль
+# выключена, а скрипты нужны и там.
+local_scripts_dir: /usr/local/bin
+local_scripts_files:
+  - zbx-chain-checkpoint

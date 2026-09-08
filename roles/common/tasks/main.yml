@@ -10,6 +10,9 @@
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 3600
+  # Обновление кеша — не изменение конфигурации, но раз в час оно давало
+  # changed и портило «changed=0» как признак того, что хост сошёлся.
+  changed_when: false
   when: ansible_facts.os_family == 'Debian'
 
 - name: Установить базовые пакеты
