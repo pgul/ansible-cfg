@@ -1,0 +1,5 @@
+---
+# На happy синхронизацию времени делает ntpsec (ntpd), а не chrony.
+# Роль common это уважает и просто следит, что служба включена.
+common_time_sync_service: ntpd
+common_time_sync_packages: [ntpsec]

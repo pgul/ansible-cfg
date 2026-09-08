@@ -1,23 +1,20 @@
 ---
 - name: Убедиться, что ОС поддерживается этой ролью
   ansible.builtin.assert:
-    that: ansible_os_family in ['Debian', 'RedHat']
+    that: ansible_facts.os_family in ['Debian', 'RedHat']
     fail_msg: >-
-      Неподдерживаемая ОС: {{ ansible_distribution }} {{ ansible_distribution_version }}
-      (os_family={{ ansible_os_family }}).
-
-- name: Подгрузить переменные для {{ ansible_os_family }}
-  ansible.builtin.include_vars: "{{ ansible_os_family }}.yml"
+      Неподдерживаемая ОС: {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}
+      (os_family={{ ansible_facts.os_family }}).
 
 - name: Обновить кеш apt
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 3600
-  when: ansible_os_family == 'Debian'
+  when: ansible_facts.os_family == 'Debian'
 
 - name: Установить базовые пакеты
   ansible.builtin.package:
-    name: "{{ common_base_packages_common + common_base_packages_os + common_base_packages_extra }}"
+    name: "{{ common_base_packages + common_base_packages_extra + common_time_sync_packages }}"
     state: present
 
 - name: Настроить таймзону
@@ -27,6 +24,6 @@
 
 - name: Включить синхронизацию времени
   ansible.builtin.service:
-    name: "{{ 'systemd-timesyncd' if ansible_os_family == 'Debian' else 'chronyd' }}"
+    name: "{{ common_time_sync_service }}"
     state: started
     enabled: true

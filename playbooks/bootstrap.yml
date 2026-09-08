@@ -1,0 +1,21 @@
+---
+# Одноразовая подготовка нового хоста: ставит то, без чего не работают сами
+# модули Ansible. Это НЕ часть site.yml намеренно — здесь есть задачи, которые
+# нельзя выполнить в check-режиме, а site.yml должен оставаться пригодным
+# для честного `--check`.
+#
+#   make bootstrap HOSTS=happy
+- name: Подготовить хост к управлению Ansible
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    # На Fedora 41+ пакетный менеджер — dnf5, и модуль dnf ходит в него через
+    # python3-libdnf5. В обычном прогоне модуль доставит биндинги сам, но в
+    # check-режиме не может — и весь прогон падает на первом же хосте.
+    - name: Установить python3-libdnf5 (биндинги dnf5 для модуля dnf)
+      ansible.builtin.raw: rpm -q python3-libdnf5 || dnf -y install python3-libdnf5
+      register: common_libdnf5
+      changed_when: "'Complete!' in common_libdnf5.stdout"
+      when: ansible_facts.os_family == 'RedHat'

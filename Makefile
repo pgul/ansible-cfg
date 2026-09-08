@@ -6,7 +6,7 @@ LINT     := .venv/bin/ansible-lint
 HOSTS    ?= all
 LIMIT    := --limit '$(HOSTS)'
 
-.PHONY: deps ping facts lint check apply
+.PHONY: deps ping facts lint bootstrap check apply
 
 deps:            ## Поставить collections из requirements.yml
 	.venv/bin/ansible-galaxy collection install -r requirements.yml
@@ -16,6 +16,9 @@ ping:            ## Проверить связность
 
 facts:           ## Показать, что за серверы в инвентаре
 	$(PLAYBOOK) playbooks/facts.yml $(LIMIT)
+
+bootstrap:       ## Разовая подготовка нового хоста (не check-safe)
+	$(PLAYBOOK) playbooks/bootstrap.yml $(LIMIT)
 
 lint:            ## Статическая проверка
 	$(LINT)

@@ -1,14 +1,48 @@
 ---
+# ВАЖНО про приоритеты: всё, что ниже, лежит в defaults/ — это САМЫЙ НИЗКИЙ
+# приоритет в Ansible, поэтому любой host_vars/ или group_vars/ это перебьёт.
+# Если бы отличия ОС лежали в roles/common/vars/<os_family>.yml, они бы,
+# наоборот, молча перебили host_vars — это частая и неочевидная ловушка.
+# Поэтому «развилка по ОС» здесь сделана словарём, а не отдельными файлами.
+
 common_timezone: UTC
 
-# Пакеты, нужные везде независимо от ОС. Имена, которые различаются
-# между Debian и RedHat, лежат в vars/<os_family>.yml.
-common_base_packages_common:
-  - curl
-  - git
-  - htop
-  - rsync
-  - tmux
-  - vim
+common_base_packages_by_os:
+  Debian:
+    - ca-certificates
+    - curl
+    - git
+    - gnupg
+    - htop
+    - net-tools
+    - python3-apt
+    - rsync
+    - tmux
+    - vim
+  RedHat:
+    - ca-certificates
+    - curl
+    - git
+    - gnupg2
+    - htop
+    - net-tools
+    - rsync
+    - tmux
+    - vim
 
+common_base_packages: "{{ common_base_packages_by_os[ansible_facts.os_family] }}"
 common_base_packages_extra: []
+
+# Служба синхронизации времени. Роль её только включает — она не навязывает
+# конкретную реализацию, потому что на happy уже стоит ntpsec, и выпиливать
+# рабочий ntpd ради chrony смысла нет.
+common_time_sync_service_by_os:
+  Debian: systemd-timesyncd
+  RedHat: chronyd
+common_time_sync_service: "{{ common_time_sync_service_by_os[ansible_facts.os_family] }}"
+
+# Пакеты, нужные этой службе. Пусто там, где она часть systemd.
+common_time_sync_packages_by_os:
+  Debian: []
+  RedHat: [chrony]
+common_time_sync_packages: "{{ common_time_sync_packages_by_os[ansible_facts.os_family] }}"

@@ -1,6 +1,0 @@
----
-common_base_packages_os:
-  - ca-certificates
-  - gnupg
-  - net-tools
-  - python3-apt

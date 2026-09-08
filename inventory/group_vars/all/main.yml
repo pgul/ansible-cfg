@@ -1,10 +1,12 @@
 ---
-# Переменные для всех хостов. Секретов здесь быть не должно —
-# для них появится inventory/group_vars/all/vault.yml под ansible-vault.
+# Подключение. Пользователь и ключи берутся из ~/.ssh/config; здесь только то,
+# что ssh не знает.
+ansible_user: gul
 
-ansible_user: root          # заменить на своего обычного пользователя + become
-ansible_ssh_private_key_file: ~/.ssh/id_ed25519
+# sudo без пароля есть везде, поэтому пароль не спрашиваем.
+# become включается в плеях (site.yml), а не глобально — см. ansible.cfg.
+ansible_become_method: sudo
 
-# Базовые настройки, которые дальше будут использовать роли.
+# --- Переменные ролей ---
 common_timezone: Europe/Kyiv
-common_base_packages_extra: []   # что доставить сверх дефолтного набора роли
+common_base_packages_extra: []
