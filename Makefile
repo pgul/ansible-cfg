@@ -5,6 +5,9 @@ PLAYBOOK := .venv/bin/ansible-playbook
 LINT     := .venv/bin/ansible-lint
 HOSTS    ?= all
 LIMIT    := --limit '$(HOSTS)'
+# REMOTE_USER=root — для совсем нового сервера, где пользователя gul ещё нет.
+REMOTE_USER ?=
+AS       := $(if $(REMOTE_USER),--user '$(REMOTE_USER)',)
 
 .PHONY: deps ping facts lint bootstrap check apply
 
@@ -17,8 +20,8 @@ ping:            ## Проверить связность
 facts:           ## Показать, что за серверы в инвентаре
 	$(PLAYBOOK) playbooks/facts.yml $(LIMIT)
 
-bootstrap:       ## Разовая подготовка нового хоста (не check-safe)
-	$(PLAYBOOK) playbooks/bootstrap.yml $(LIMIT)
+bootstrap:       ## Разовая подготовка хоста; REMOTE_USER=root для нового (не check-safe)
+	$(PLAYBOOK) playbooks/bootstrap.yml $(LIMIT) $(AS)
 
 lint:            ## Статическая проверка
 	$(LINT)

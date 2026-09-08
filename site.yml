@@ -6,4 +6,7 @@
   become: true
   gather_facts: true
   roles:
+    # users идёт первой: всё остальное опирается на то, что админский
+    # пользователь и его sudo уже в нужном состоянии.
+    - users
     - common

@@ -1,0 +1,39 @@
+---
+# Административный пользователь. uid НЕ фиксируем: на разных хостах он уже
+# разный (1000 и 1002), а менять uid у существующего пользователя — это
+# сломать владельца всех его файлов.
+users_admin_name: gul
+users_admin_shell: /bin/bash
+users_admin_comment: Pavel Gulchuk
+
+# Группа, членство в которой даёт sudo. В Debian это sudo, в RedHat — wheel.
+users_admin_group_by_os:
+  Debian: sudo
+  RedHat: wheel
+users_admin_group: "{{ users_admin_group_by_os[ansible_facts.os_family] }}"
+
+# Публичные ключи из files/authorized_keys/. Роль их только ДОБАВЛЯЕТ:
+# exclusive не включаем, потому что на happy лежат девять ключей, среди них
+# ограниченные command="..." для rsync — затирать их нельзя.
+# По умолчанию только ed25519: он и так есть на всех шести хостах, а
+# gul-rsa.pub — это 2048-битный RSA, который лежит лишь на части машин.
+# Раскатывать его на остальные ради единообразия смысла нет; если понадобится,
+# файл в репозитории есть — достаточно вернуть строку в список.
+users_admin_authorized_keys:
+  - gul.pub
+  # - gul-rsa.pub
+
+# --- sudo ---
+users_manage_sudoers: true
+users_sudoers_file: 10-nopasswd
+
+# Только правило NOPASSWD. Defaults !env_reset сознательно не раскатываем:
+# он снимает очистку окружения для всех членов группы sudo/wheel сразу,
+# а не только для одного пользователя.
+users_sudoers_rules:
+  - "%{{ users_admin_group }}\tALL=(ALL) NOPASSWD:ALL"
+
+# Файлы в /etc/sudoers.d, которые роль удаляет ПОСЛЕ того, как её собственный
+# файл создан и прошёл visudo. Здесь — исторические дубли того же правила.
+users_sudoers_obsolete:
+  - 99-nopasswd

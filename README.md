@@ -14,6 +14,20 @@ make deps          # коллекции из requirements.yml в ./collections
 
 ## Рабочий цикл
 
+### Новый сервер
+
+Пользователя `gul` там ещё нет, поэтому первый заход — от root:
+
+```bash
+make bootstrap HOSTS=newhost REMOTE_USER=root
+```
+
+Это заведёт `gul`, положит ssh-ключ и настроит sudo. Дальше хост живёт как все:
+`make check HOSTS=newhost` → `make apply HOSTS=newhost`. Не забыть добавить его
+в `inventory/hosts.yml` и в `~/.ssh/config`.
+
+### Повседневное
+
 ```bash
 make ping                  # связность
 make facts                 # что за машины в инвентаре
@@ -44,7 +58,7 @@ roles/<name>/
 
 ### Две вещи, на которых легко обжечься
 
-**Приоритет переменных.** Отличия Ubuntu/Fedora лежат в `defaults/main.yml`
+**Приоритет переменных.** Отличия Ubuntu/Fedora (например, группа `sudo` против `wheel`) лежат в `defaults/main.yml`
 словарём вида `common_base_packages_by_os`, а не в `roles/<name>/vars/`.
 Причина: `defaults/` — самый низкий приоритет, его свободно перебивает
 `host_vars/`; а `vars/` — наоборот, один из самых высоких, и он бы молча
@@ -65,7 +79,7 @@ roles/<name>/
 |---|-----------------------|---------------------------------------------------------|--------|
 | 0 | `playbooks/bootstrap` | биндинги dnf5 на Fedora; разово на новый хост            | есть   |
 | 1 | `common`              | пакеты, таймзона, синхронизация времени                  | есть   |
-| 2 | `sudoers`             | `/etc/sudoers.d/*` с обязательным `validate: visudo -cf` | —      |
+| 2 | `users`               | пользователь gul, ssh-ключи, беспарольный sudo           | есть   |
 | 3 | `auto_updates`        | `unattended-upgrades` (Ubuntu) / `dnf-automatic` (Fedora)| —      |
 | 4 | `zabbix_agent`        | пакет из дистрибутива, конфиг шаблоном                   | —      |
 | 5 | `cron_jobs`           | скрипты в `/usr/local/sbin` + systemd timers или cron    | —      |
@@ -86,6 +100,20 @@ roles/<name>/
 | ho     | Ubuntu 26.04 | **LXC**       | полигон (`staging`); контейнер, а не VM |
 | spelik | Ubuntu 26.04 | Xen-гость     |                                     |
 | node   | Ubuntu 26.04 | Xen-гость     |                                     |
+
+### Отклонения от общего правила
+
+- **happy: `users_manage_sudoers: false`.** В группе `wheel` там состоят `root`,
+  `gul` и `tiger`. Общее правило роли `%wheel ALL=(ALL) NOPASSWD:ALL` выдало бы
+  беспарольный root ещё и пользователю `tiger`. Сам `gul` там уже имеет NOPASSWD
+  персональным правилом в `/etc/sudoers`, рядом с десятком тонких правил для
+  zabbix, backup и rsync — роль туда не лезет.
+- **happy: `#includedir /etc/sudoers.d` — это действующая директива**, а не
+  закомментированная строка (решётка в ней не означает комментарий; новая форма
+  записи — `@includedir`). Роль не пытается её «раскомментировать», а только
+  проверяет наличие: `includedir` без префикса — синтаксическая ошибка, которая
+  положила бы sudo целиком.
+- **ho: `common_manage_time_sync` выключается автоматически** — это контейнер.
 
 `ho` — единственный контейнер в парке, и это влияет на роли: часы принадлежат
 хосту (`systemd-timesyncd` не стартует, `ConditionVirtualization=!container`),
