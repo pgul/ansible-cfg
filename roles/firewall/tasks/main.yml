@@ -88,11 +88,18 @@
     mode: "0644"
   when: firewall_rules is changed
 
-- name: Collect service facts
+# Enumerating every unit takes over a minute per host, and the only consumer is
+# the fail2ban restart below, which matters only when the ruleset changed.
+- name: Collect service facts  # noqa: no-handler
   ansible.builtin.service_facts:
+  when: firewall_rules is changed
 
-# Loading a ruleset removes the f2b-* chains; fail2ban only re-creates them on
-# start, so without this the bans silently stop being enforced.
+# Only needed when fail2ban bans through an iptables action, in which case
+# loading a ruleset removes its f2b-* chains and it re-creates them on start.
+# On us and oc it currently bans through nftables instead, into its own
+# "inet f2b-table", which iptables-restore does not touch — so this restart is
+# a no-op there. Kept anyway: the banaction is a fail2ban setting this role
+# does not control, and bans survive the restart via its sqlite database.
 - name: Restart fail2ban so it re-creates its chains
   ansible.builtin.systemd_service:
     name: fail2ban
