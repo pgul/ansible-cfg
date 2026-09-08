@@ -83,8 +83,9 @@ roles/<name>/
 | 4 | `auto_updates`        | `unattended-upgrades` (Ubuntu) / `dnf-automatic` (Fedora)| не нужно |
 | 3 | `zabbix_agent`        | пакет из дистрибутива, конфиг шаблоном                   | есть   |
 | 5 | `local_scripts`       | собственные скрипты в `/usr/local/bin`                   | есть   |
-| 7 | `cron_jobs`           | запуск этих скриптов: systemd timers или cron            | не нужно |
-| 6 | `firewall`            | полное владение `/etc/iptables/rules.v4`                 | есть   |
+| — | `cron_jobs`           | запуск этих скриптов: systemd timers или cron            | не нужно |
+| 6 | `mariadb`             | `mysqldump.cnf` в drop-in каталоге MariaDB                | есть   |
+| 7 | `firewall`            | полное владение `/etc/iptables/rules.v4`                 | есть   |
 
 Бэкап настроен вручную и в Ansible пока не заводится.
 
@@ -118,6 +119,31 @@ roles/<name>/
 - **happy: `zabbix_agent_manage: false`.** Конфиг агента там по старому пути
   `/etc/zabbix_agentd.conf`, без `Include`, с двумя десятками UserParameter
   плюс `SourceIP`, `ListenIP` и `StartAgents`. Общий шаблон снёс бы всё это.
+
+### MariaDB
+
+Роль кладёт `mysqldump.cnf` в drop-in каталог: `/etc/mysql/conf.d` на Ubuntu,
+`/etc/my.cnf.d` на Fedora. Признак «здесь есть MariaDB» — существование этого
+каталога, отдельного флага не нужно: на новом сервере файл появится сам, как
+только пакет будет установлен. Перезапуск не делается и не нужен — настройки
+читает клиент `mysqldump` при каждом запуске.
+
+Работает на ho, node, oc, us. Проверить эффективные значения:
+`my_print_defaults mysqldump`.
+
+Два исключения:
+
+- **spelik** — MariaDB там просто не установлена, каталога нет, роль пропускается
+  сама, без флага.
+- **happy** — `mariadb_manage: false`. Её `/etc/my.cnf` написан вручную и не
+  содержит `!includedir /etc/my.cnf.d`, поэтому drop-in там не читается вообще.
+  Подключить каталог значило бы разом активировать тринадцать штатных
+  федоровских drop-in'ов (galera, spider, cracklib, шифрование, hashicorp,
+  провайдеры сжатия) на живой базе, под которой ещё и Zabbix-сервер.
+
+`max_allowed_packet` сведён к **32M**. До этого на node было 16M, на остальных
+трёх 32M; выбрано большее, потому что уменьшение лимита ломает дамп таблицы
+с крупной строкой, а увеличение безопасно.
 
 ### Файрвол
 

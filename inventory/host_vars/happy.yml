@@ -30,3 +30,15 @@ zabbix_agent_manage: false
 
 # The firewall on happy is hand-built and stays that way.
 firewall_manage: false
+
+# MariaDB drop-ins do not work on happy either.
+#
+# Its /etc/my.cnf is hand-written and, unlike the stock Fedora one, has no
+# "!includedir /etc/my.cnf.d" — so a file placed there is simply never read.
+# Adding the include would switch on all thirteen stock drop-ins that Fedora
+# ships in that directory at once (galera, spider, cracklib, encryption,
+# hashicorp key management, compression providers) on a live database that also
+# backs the Zabbix server. Not worth it for a mysqldump setting.
+#
+# To get the same effect here, add a [mysqldump] section to /etc/my.cnf by hand.
+mariadb_manage: false

@@ -1,0 +1,17 @@
+---
+- name: Look for the MariaDB drop-in directory
+  ansible.builtin.stat:
+    path: "{{ mariadb_conf_dir }}"
+  register: mariadb_conf_dir_stat
+
+- name: Install the mysqldump defaults
+  ansible.builtin.template:
+    src: mysqldump.cnf.j2
+    dest: "{{ mariadb_conf_dir }}/mysqldump.cnf"
+    owner: root
+    group: root
+    mode: "0644"
+  # No handler and no restart: this file configures the mysqldump client, which
+  # reads it afresh on every invocation. Restarting the server would change
+  # nothing and would interrupt whatever is connected.
+  when: mariadb_conf_dir_stat.stat.isdir | default(false)

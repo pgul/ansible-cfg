@@ -1,0 +1,18 @@
+---
+mariadb_manage: true
+
+# Debian keeps drop-ins in /etc/mysql/conf.d, Fedora in /etc/my.cnf.d.
+# The role writes nothing if the directory is absent, which is how it tells
+# "MariaDB is installed here" from "it is not" — no package facts needed.
+mariadb_conf_dir_by_os:
+  Debian: /etc/mysql/conf.d
+  RedHat: /etc/my.cnf.d
+mariadb_conf_dir: "{{ mariadb_conf_dir_by_os[ansible_facts.os_family] }}"
+
+# Settings for the mysqldump client. Kept in a drop-in rather than in my.cnf so
+# a package upgrade cannot quietly revert them.
+#
+# quick        — stream rows instead of buffering the whole table in memory
+# quote-names  — backtick identifiers, so a table called "order" still restores
+# max_allowed_packet — the client-side ceiling on a single row
+mariadb_mysqldump_max_allowed_packet: 32M

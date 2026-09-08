@@ -13,6 +13,8 @@
     - local_scripts
     - role: zabbix_agent
       when: zabbix_agent_manage | bool
+    - role: mariadb
+      when: mariadb_manage | bool
 
 # The firewall gets a play of its own, one host at a time, aborting the whole
 # run on the first failure. A mistake here costs access to the host, so the
