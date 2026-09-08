@@ -1,0 +1,10 @@
+---
+# Переменные для всех хостов. Секретов здесь быть не должно —
+# для них появится inventory/group_vars/all/vault.yml под ansible-vault.
+
+ansible_user: root          # заменить на своего обычного пользователя + become
+ansible_ssh_private_key_file: ~/.ssh/id_ed25519
+
+# Базовые настройки, которые дальше будут использовать роли.
+common_timezone: Europe/Kyiv
+common_base_packages_extra: []   # что доставить сверх дефолтного набора роли

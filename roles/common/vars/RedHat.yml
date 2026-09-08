@@ -1,0 +1,5 @@
+---
+common_base_packages_os:
+  - ca-certificates
+  - gnupg2
+  - net-tools

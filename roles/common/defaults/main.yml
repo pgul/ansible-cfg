@@ -1,0 +1,14 @@
+---
+common_timezone: UTC
+
+# Пакеты, нужные везде независимо от ОС. Имена, которые различаются
+# между Debian и RedHat, лежат в vars/<os_family>.yml.
+common_base_packages_common:
+  - curl
+  - git
+  - htop
+  - rsync
+  - tmux
+  - vim
+
+common_base_packages_extra: []

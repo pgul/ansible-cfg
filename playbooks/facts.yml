@@ -1,0 +1,17 @@
+---
+# Разведка: ничего не меняет, только показывает, что за машины у нас есть.
+- name: Собрать факты о хостах
+  hosts: all
+  become: false
+  gather_facts: true
+  tasks:
+    - name: Показать сводку
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}:
+          {{ ansible_distribution }} {{ ansible_distribution_version }}
+          ({{ ansible_os_family }}),
+          kernel {{ ansible_kernel }},
+          {{ ansible_processor_vcpus }} vCPU,
+          {{ (ansible_memtotal_mb / 1024) | round(1) }} GiB RAM,
+          python {{ ansible_python_version }}

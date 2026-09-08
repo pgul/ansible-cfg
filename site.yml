@@ -1,0 +1,9 @@
+---
+# Главный плейбук. Роли добавляем сюда по мере готовности.
+# Запуск: make check   (ничего не меняет)  →  make apply
+- name: Базовая конфигурация серверов
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - common

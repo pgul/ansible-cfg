@@ -1,0 +1,5 @@
+---
+- name: Перезапустить cron
+  ansible.builtin.service:
+    name: "{{ 'cron' if ansible_os_family == 'Debian' else 'crond' }}"
+    state: restarted

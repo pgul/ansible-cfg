@@ -1,0 +1,6 @@
+---
+collections:
+  - name: ansible.posix       # firewalld, sysctl, mount, profile_tasks
+    version: ">=1.5.0"
+  - name: community.general   # ufw, timezone, sudoers, много прочего
+    version: ">=8.0.0"
