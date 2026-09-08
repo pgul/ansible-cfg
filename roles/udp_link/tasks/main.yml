@@ -1,0 +1,142 @@
+---
+# What is installed right now. On Debian dpkg is the source of truth; on Fedora
+# there is no package, so the role leaves a stamp file next to the binary and
+# reads that back.
+- name: Read the installed version from dpkg
+  ansible.builtin.command: dpkg-query -W -f=${Version} udp-link
+  register: udp_link_dpkg
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: ansible_facts.os_family == 'Debian'
+
+- name: Read the installed version from the stamp file
+  ansible.builtin.slurp:
+    src: "{{ udp_link_stamp }}"
+  register: udp_link_stamp_read
+  failed_when: false
+  check_mode: false
+  when: ansible_facts.os_family != 'Debian'
+
+- name: Check that the binary is where we expect it
+  ansible.builtin.stat:
+    path: "{{ udp_link_binary }}"
+  register: udp_link_binary_stat
+
+- name: Work out which version is installed
+  ansible.builtin.set_fact:
+    # A recorded version only counts when the binary is actually at the
+    # expected path: that way moving the destination, or deleting the file by
+    # hand, forces a rebuild instead of being silently reported as current.
+    udp_link_installed: >-
+      {{ ((udp_link_dpkg.stdout | default('') | trim)
+          if ansible_facts.os_family == 'Debian'
+          else (udp_link_stamp_read.content | default('') | b64decode | trim))
+         if udp_link_binary_stat.stat.exists else '' }}
+
+- name: Report the version gap
+  ansible.builtin.debug:
+    msg: >-
+      udp-link: installed "{{ udp_link_installed | default('none') }}",
+      wanted "{{ udp_link_version }}" —
+      {{ 'up to date' if udp_link_installed == udp_link_version
+         else ('would rebuild (check mode builds nothing)' if ansible_check_mode else 'rebuilding') }}
+
+# Skipped entirely under --check. Building cannot be simulated: the checkout
+# does not exist yet, so make would have nowhere to run, and a dry run must not
+# compile and install software anyway. The message above is what --check
+# reports instead.
+- name: Build and install udp-link
+  when:
+    - udp_link_installed != udp_link_version
+    - not ansible_check_mode
+  block:
+    - name: Install the build dependencies
+      ansible.builtin.package:
+        name: "{{ udp_link_build_packages }}"
+        state: present
+
+    - name: Check out {{ udp_link_git_ref }}
+      ansible.builtin.git:
+        repo: "{{ udp_link_repo }}"
+        dest: "{{ udp_link_src_dir }}"
+        version: "{{ udp_link_git_ref }}"
+        # Build artefacts from a previous run make the tree dirty; this block
+        # only runs when a rebuild is needed, so discarding them is safe.
+        force: true
+
+    # dpkg-buildpackage writes the .deb one directory above the source tree.
+    - name: Build the Debian package
+      ansible.builtin.command:
+        cmd: make debian-package
+        chdir: "{{ udp_link_src_dir }}"
+      changed_when: true
+      when: ansible_facts.os_family == 'Debian'
+
+    # Finding the file beats guessing its name: dpkg architecture strings
+    # (amd64, arm64) differ from what facts report (x86_64, aarch64).
+    - name: Locate the built package
+      ansible.builtin.find:
+        paths: "{{ udp_link_src_dir | dirname }}"
+        patterns: "udp-link_{{ udp_link_version }}_*.deb"
+      register: udp_link_deb
+      when: ansible_facts.os_family == 'Debian'
+
+    - name: Fail if the build produced something unexpected
+      ansible.builtin.assert:
+        that: udp_link_deb.files | length == 1
+        fail_msg: >-
+          Expected exactly one udp-link_{{ udp_link_version }}_*.deb in
+          {{ udp_link_src_dir | dirname }}, found {{ udp_link_deb.files | length }}.
+      when: ansible_facts.os_family == 'Debian'
+
+    - name: Install the Debian package
+      ansible.builtin.apt:
+        deb: "{{ udp_link_deb.files[0].path }}"
+      when: ansible_facts.os_family == 'Debian'
+
+    # /usr/local/bin comes before /usr/bin in root's PATH, so a leftover hand
+    # build there would keep winning over the package we just installed. That
+    # is exactly the state node was in. On Fedora the same path is where the
+    # role installs on purpose, hence Debian only.
+    - name: Remove a hand-built binary that would shadow the package
+      ansible.builtin.file:
+        path: /usr/local/bin/udp-link
+        state: absent
+      when: ansible_facts.os_family == 'Debian'
+
+    # Fedora: the source tree carries no rpm packaging, so build in place.
+    - name: Build from source
+      ansible.builtin.command:
+        cmd: make
+        chdir: "{{ udp_link_src_dir }}"
+      changed_when: true
+      when: ansible_facts.os_family != 'Debian'
+
+    # Copied rather than "make install": that target hardcodes its destination
+    # and silently prefers /opt/local/bin when it exists, which is right on a
+    # Mac and wrong here.
+    - name: Install the binary
+      ansible.builtin.copy:
+        src: "{{ udp_link_src_dir }}/udp-link"
+        dest: "{{ udp_link_binary }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+      when: ansible_facts.os_family != 'Debian'
+
+    - name: Record the installed version
+      ansible.builtin.copy:
+        content: "{{ udp_link_version }}\n"
+        dest: "{{ udp_link_stamp }}"
+        owner: root
+        group: root
+        mode: "0644"
+      when: ansible_facts.os_family != 'Debian'
+
+    - name: Confirm the binary runs
+      ansible.builtin.command: "{{ udp_link_binary }} --help"
+      register: udp_link_help
+      changed_when: false
+      failed_when: "'Usage: udp-link' not in udp_link_help.stdout"

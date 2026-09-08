@@ -1,0 +1,34 @@
+---
+udp_link_manage: true
+
+# The version every host should end up on. It is both the git tag (prefixed
+# with "v") and the version debian/changelog carries at that tag, which is what
+# lets the role tell "already current" from "needs rebuilding".
+udp_link_version: "0.6"
+udp_link_git_ref: "v{{ udp_link_version }}"
+
+# https rather than git@github.com: the repository is public, so no key is
+# needed, and the role keeps working when no ssh agent is forwarded or when it
+# runs from a different control machine. Switch this one line to
+# git@github.com:pgul/udp-link.git to go back to the key.
+udp_link_repo: https://github.com/pgul/udp-link.git
+udp_link_src_dir: /usr/local/src/udp-link
+
+# Debian builds a .deb and installs it, so the binary stays under dpkg in
+# /usr/bin. Fedora has no packaging in the source tree, so there the role runs
+# "make install", which puts the binary here.
+udp_link_prefix: /usr/local
+udp_link_stamp: /usr/local/share/udp-link.version
+
+# Where the binary ends up. On Debian that is the .deb's business; elsewhere the
+# role copies it there itself. Overridden on happy, whose PATH — even for a
+# login shell — has no /usr/local/bin, so a binary there is invisible by name.
+udp_link_binary_by_os:
+  Debian: /usr/bin/udp-link
+  RedHat: "{{ udp_link_prefix }}/bin/udp-link"
+udp_link_binary: "{{ udp_link_binary_by_os[ansible_facts.os_family] }}"
+
+udp_link_build_packages_by_os:
+  Debian: [debhelper, dpkg-dev, gcc, git, make, pkg-config]
+  RedHat: [gcc, git, make, pkgconf-pkg-config]
+udp_link_build_packages: "{{ udp_link_build_packages_by_os[ansible_facts.os_family] }}"

@@ -16,15 +16,18 @@
     - role: mariadb
       when: mariadb_manage | bool
 
-# The firewall gets a play of its own, one host at a time, aborting the whole
-# run on the first failure. A mistake here costs access to the host, so the
-# blast radius is kept to a single machine.
-- name: Firewall
+# Anything that can cost us access to the host goes here: one machine at a
+# time, aborting the whole run on the first failure, so a mistake reaches one
+# server instead of six. udp-link carries every ssh session (ProxyCommand in
+# ~/.ssh/config), and the firewall decides whether ssh is reachable at all.
+- name: Access-critical roles
   hosts: all
   become: true
   gather_facts: false
   serial: 1
   any_errors_fatal: true
   roles:
+    - role: udp_link
+      when: udp_link_manage | bool
     - role: firewall
       when: firewall_manage | bool
