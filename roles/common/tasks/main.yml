@@ -14,7 +14,9 @@
 
 - name: Установить базовые пакеты
   ansible.builtin.package:
-    name: "{{ common_base_packages + common_base_packages_extra + common_time_sync_packages }}"
+    name: >-
+      {{ common_base_packages + common_base_packages_extra
+         + (common_time_sync_packages if common_manage_time_sync | bool else []) }}
     state: present
 
 - name: Настроить таймзону
@@ -27,3 +29,4 @@
     name: "{{ common_time_sync_service }}"
     state: started
     enabled: true
+  when: common_manage_time_sync | bool

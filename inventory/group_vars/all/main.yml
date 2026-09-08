@@ -8,5 +8,8 @@ ansible_user: gul
 ansible_become_method: sudo
 
 # --- Переменные ролей ---
-common_timezone: Europe/Kyiv
+# Таймзону здесь НЕ задаём: дефолт роли уже UTC, но записанный так, как его
+# пишет каждая ОС (Etc/UTC на Ubuntu, UTC на Fedora). Серверы держим на UTC
+# осознанно — логи с разных машин сопоставимы, и cron не выполняет задание
+# дважды (или ни разу) при переводе часов.
 common_base_packages_extra: []

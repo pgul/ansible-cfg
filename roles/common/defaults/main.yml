@@ -5,7 +5,13 @@
 # наоборот, молча перебили host_vars — это частая и неочевидная ловушка.
 # Поэтому «развилка по ОС» здесь сделана словарём, а не отдельными файлами.
 
-common_timezone: UTC
+# Debian и RedHat записывают одну и ту же зону разными именами: Ubuntu держит
+# Etc/UTC, Fedora — UTC. Если задать одно значение на всех, модель времени
+# будет «изменяться» при каждом прогоне на половине парка.
+common_timezone_by_os:
+  Debian: Etc/UTC
+  RedHat: UTC
+common_timezone: "{{ common_timezone_by_os[ansible_facts.os_family] }}"
 
 common_base_packages_by_os:
   Debian:
@@ -46,3 +52,9 @@ common_time_sync_packages_by_os:
   Debian: []
   RedHat: [chrony]
 common_time_sync_packages: "{{ common_time_sync_packages_by_os[ansible_facts.os_family] }}"
+
+# В контейнере часы принадлежат хосту: systemd-timesyncd там не запускается
+# (ConditionVirtualization=!container), и попытка его стартовать даёт
+# «изменение», которое никогда не сходится. Поэтому в контейнерах временем
+# не управляем вовсе.
+common_manage_time_sync: "{{ 'container' not in ansible_facts.virtualization_tech_guest | default([]) }}"

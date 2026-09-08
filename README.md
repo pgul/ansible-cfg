@@ -78,14 +78,21 @@ roles/<name>/
 
 ### Парк машин
 
-| хост   | ОС           | особенности                       |
-|--------|--------------|-----------------------------------|
-| happy  | Fedora 44    | ntpsec вместо chrony, containerd, prometheus, firewalld выключен |
-| us     | Ubuntu 26.04 | 0.9 GiB RAM — самая тесная        |
-| oc     | Ubuntu 26.04 |                                   |
-| ho     | Ubuntu 26.04 | 32 vCPU, гость Proxmox            |
-| spelik | Ubuntu 26.04 |                                   |
-| node   | Ubuntu 26.04 |                                   |
+| хост   | ОС           | виртуализация | особенности                         |
+|--------|--------------|---------------|-------------------------------------|
+| happy  | Fedora 44    | KVM-**хост**  | ntpsec вместо chrony, containerd, prometheus, firewalld выключен |
+| us     | Ubuntu 26.04 | KVM-гость     | 0.9 GiB RAM — самая тесная          |
+| oc     | Ubuntu 26.04 | KVM-гость     |                                     |
+| ho     | Ubuntu 26.04 | **LXC**       | полигон (`staging`); контейнер, а не VM |
+| spelik | Ubuntu 26.04 | Xen-гость     |                                     |
+| node   | Ubuntu 26.04 | Xen-гость     |                                     |
+
+`ho` — единственный контейнер в парке, и это влияет на роли: часы принадлежат
+хосту (`systemd-timesyncd` не стартует, `ConditionVirtualization=!container`),
+а позже так же придётся поступить с файрволом и модулями ядра. Роль `common`
+уже это учитывает через `common_manage_time_sync`. Обратная сторона выбора `ho`
+полигоном: он наименее типичен, поэтому чистый прогон на нём **не** гарантирует
+чистый прогон на остальных пяти.
 
 Все хосты доступны только через `~/.ssh/config` (порт 922, `ProxyCommand udp-link`),
 поэтому в инвентаре нет ни `ansible_host`, ни `ansible_port`.
