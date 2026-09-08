@@ -4,4 +4,4 @@ zabbix_agent_rpc_checks:
 
 zabbix_agent_user_parameters:
   # Здесь именно bitcoin-cli, а не JSON-RPC через curl, как у остальных проверок.
-  - 'btc-testnet[*],bitcoin-cli -testnet4 $1 | jq $2'
+  - 'btc-testnet[*],bitcoin-cli -testnet4 $1 | jq .$2'
