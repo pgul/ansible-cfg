@@ -1,0 +1,102 @@
+---
+# Installing iptables-persistent asks debconf whether to save the current rules.
+# Preseeding keeps a new server from hanging on that prompt.
+- name: Preseed iptables-persistent so it does not prompt
+  ansible.builtin.debconf:
+    name: iptables-persistent
+    question: "{{ item }}"
+    vtype: boolean
+    value: "false"
+  loop:
+    - iptables-persistent/autosave_v4
+    - iptables-persistent/autosave_v6
+
+- name: Install iptables-persistent
+  ansible.builtin.package:
+    name: iptables-persistent
+    state: present
+
+- name: Restore the saved rules at boot
+  ansible.builtin.systemd_service:
+    name: netfilter-persistent
+    enabled: true
+
+# NOT stopped, only disabled. The unit's ExecStop is "nft flush ruleset", and
+# iptables-nft rules live in the same engine — stopping it would drop the whole
+# firewall, ssh redirect included. Disabling is enough: it is a oneshot unit
+# that has already run, and it will not run again after a reboot.
+- name: Keep nftables.service from running at boot
+  ansible.builtin.systemd_service:
+    name: nftables
+    enabled: false
+  when: firewall_disable_nftables_service | bool
+  failed_when: false
+
+- name: Render the ruleset
+  ansible.builtin.template:
+    src: rules.v4.j2
+    dest: "{{ firewall_rules_file }}"
+    owner: root
+    group: root
+    mode: "0640"
+    backup: true
+    # Catches syntax errors before the file lands. It does NOT catch a rule set
+    # that is valid but locks us out — that is what the rollback below is for.
+    validate: iptables-restore --test %s
+  register: firewall_rules
+
+# The three tasks below are deliberately not handlers, despite "when: changed".
+# Handlers run at the end of the play, but the whole point here is the order:
+# arm the rollback, load the rules, prove ssh still works, only then disarm.
+- name: Snapshot the live ruleset and arm the rollback  # noqa: no-handler
+  ansible.builtin.shell:
+    cmd: |
+      set -eu
+      iptables-save > {{ firewall_rollback_rules }}
+      rm -f {{ firewall_rollback_ok }}
+      setsid sh -c 'sleep {{ firewall_rollback_seconds }}
+        if [ ! -e {{ firewall_rollback_ok }} ]; then
+          iptables-restore < {{ firewall_rollback_rules }}
+      {% if firewall_rules.backup_file is defined and firewall_rules.backup_file %}
+          cp {{ firewall_rules.backup_file }} {{ firewall_rules_file }}
+      {% endif %}
+        fi
+        rm -f {{ firewall_rollback_rules }} {{ firewall_rollback_ok }}' </dev/null >/dev/null 2>&1 &
+  changed_when: true
+  when: firewall_rules is changed
+
+- name: Load the new ruleset  # noqa: no-handler
+  ansible.builtin.command: "iptables-restore {{ firewall_rules_file }}"
+  changed_when: true
+  when: firewall_rules is changed
+
+# The ssh control socket is kept open by ControlPersist, so an existing session
+# survives even a ruleset that blocks new connections. Dropping it forces the
+# next task to dial in again, which is the only honest test.
+- name: Drop the ssh control connection
+  ansible.builtin.meta: reset_connection
+
+- name: Prove that a new ssh connection still works
+  ansible.builtin.ping:
+
+- name: Disarm the rollback  # noqa: no-handler
+  ansible.builtin.file:
+    path: "{{ firewall_rollback_ok }}"
+    state: touch
+    owner: root
+    group: root
+    mode: "0644"
+  when: firewall_rules is changed
+
+- name: Collect service facts
+  ansible.builtin.service_facts:
+
+# Loading a ruleset removes the f2b-* chains; fail2ban only re-creates them on
+# start, so without this the bans silently stop being enforced.
+- name: Restart fail2ban so it re-creates its chains
+  ansible.builtin.systemd_service:
+    name: fail2ban
+    state: restarted
+  when:
+    - firewall_rules is changed
+    - "'fail2ban.service' in ansible_facts.services | default({})"

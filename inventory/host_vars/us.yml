@@ -3,3 +3,37 @@ zabbix_agent_user_parameters:
   - 'check-mailq,/bin/ls /var/spool/exim4/input | grep -c -- ''-H$'''
   - 'updates-list[*],cat /var/tmp/updates-`basename $1`'
   - 'top,top -bn1; echo; ps wwlax'
+
+# --- firewall ---
+firewall_forward_policy: ACCEPT
+firewall_zabbix_agent_sources:
+  - 213.133.161.33
+  - 213.133.164.6
+  - 91.225.123.133
+  - 129.159.205.15   # was written as .15/24 by hand, i.e. the whole /24
+firewall_tcp_ports: [25, 53, 80, 443, 465, 587, 993, 24554]
+firewall_udp_ports: [53, 1194, 4242]
+firewall_udp_port_ranges: ['43200:44000', '60000:61000']
+firewall_extra_input_rules:
+  - '-p tcp -m tcp --dport 995 --tcp-flags FIN,SYN,RST,ACK SYN -j ACCEPT'
+  - '-p udp -m udp --sport 123 -j ACCEPT'
+  # Redundant next to the blanket 24554 above, but kept as found.
+  - '-s 213.133.161.33/32 -p tcp -m state --state NEW -m tcp --dport 24554 -j ACCEPT'
+  - '-s 213.133.164.6/32 -p tcp -m state --state NEW -m tcp --dport 24554 -j ACCEPT'
+  - '-s 91.225.123.133/32 -p tcp -m state --state NEW -m tcp --dport 24554 -j ACCEPT'
+firewall_forward_rules:
+  - '-m state --state RELATED,ESTABLISHED -j ACCEPT'
+  - '-s 10.10.1.0/24 -j ACCEPT'
+  - '-s 10.10.0.0/24 -j ACCEPT'
+firewall_extra_chains:
+  InstanceServices: "{{ firewall_oracle_instance_services }}"
+# Matches on the destination address rather than blanket, as found.
+firewall_nat_prerouting_rules:
+  - '-d 10.0.0.0/8 -p tcp -m tcp --dport 22 -j REDIRECT --to-ports 1'
+  - '-d 10.0.0.0/8 -p tcp -m tcp --dport 922 -j REDIRECT --to-ports 22'
+  - '-d 152.70.130.206/32 -p tcp -m tcp --dport 922 -j REDIRECT --to-ports 22'
+firewall_nat_postrouting_rules:
+  - '-s 10.10.0.0/24 -o ens3 -j MASQUERADE'
+  - '-s 10.10.1.0/24 -o ens3 -j MASQUERADE'
+  - '-s 10.10.0.0/24 ! -d 10.10.0.0/24 -j MASQUERADE'
+  - '-s 10.10.1.0/24 ! -d 10.10.1.0/24 -j MASQUERADE'

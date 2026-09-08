@@ -8,3 +8,10 @@ zabbix_agent_rpc_checks:
 zabbix_agent_user_parameters:
   - 'updates-list[*],cat /var/tmp/updates-`basename $1`'
   - 'top,top -bn1; echo; ps wwlax'
+
+# --- firewall ---
+# Not managed here. Docker writes 24 filter rules and 11 nat rules at runtime,
+# and loading a static ruleset would erase them until dockerd is restarted.
+# Its INPUT policy is also ACCEPT while the other four are DROP — a separate
+# question, to be settled by hand.
+firewall_manage: false

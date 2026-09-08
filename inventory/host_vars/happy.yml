@@ -27,3 +27,6 @@ users_manage_sudoers: false
 # template would wipe all of it. On top of that happy is itself a Zabbix server
 # running 7.4, while the Ubuntu hosts run agent 7.0.
 zabbix_agent_manage: false
+
+# The firewall on happy is hand-built and stays that way.
+firewall_manage: false

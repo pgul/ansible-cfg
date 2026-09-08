@@ -1,0 +1,61 @@
+# {{ ansible_managed }}
+# Manual edits will be overwritten. Change roles/firewall or host_vars.
+#
+# Chains created at runtime by other software are deliberately absent:
+# fail2ban re-creates f2b-* when it restarts, which this role triggers.
+
+*filter
+:INPUT {{ firewall_input_policy }} [0:0]
+:FORWARD {{ firewall_forward_policy }} [0:0]
+:OUTPUT {{ firewall_output_policy }} [0:0]
+{% for name in firewall_extra_chains | sort %}
+:{{ name }} - [0:0]
+{% endfor %}
+
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -p icmp -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+{% for port in firewall_ssh_ports %}
+-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% for src in firewall_zabbix_agent_sources %}
+-A INPUT -s {{ src }}/32 -p tcp -m state --state NEW -m tcp --dport {{ firewall_zabbix_agent_port }} -j ACCEPT
+{% endfor %}
+{% for src in firewall_zabbix_server_sources %}
+-A INPUT -s {{ src }}/32 -p tcp -m state --state NEW -m tcp --dport {{ firewall_zabbix_server_port }} -j ACCEPT
+{% endfor %}
+{% for port in firewall_tcp_ports %}
+-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% for port in firewall_udp_ports %}
+-A INPUT -p udp -m udp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% for range in firewall_udp_port_ranges %}
+-A INPUT -p udp -m udp -m multiport --dports {{ range }} -j ACCEPT
+{% endfor %}
+{% for rule in firewall_extra_input_rules %}
+-A INPUT {{ rule }}
+{% endfor %}
+-A INPUT -p tcp -m state --state NEW -m tcp -j REJECT --reject-with icmp-host-prohibited
+{% for rule in firewall_forward_rules %}
+-A FORWARD {{ rule }}
+{% endfor %}
+{% for name in firewall_extra_chains | sort %}
+{% for rule in firewall_extra_chains[name] %}
+-A {{ name }} {{ rule }}
+{% endfor %}
+{% endfor %}
+COMMIT
+
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+{% for rule in firewall_nat_prerouting_rules %}
+-A PREROUTING {{ rule }}
+{% endfor %}
+{% for rule in firewall_nat_postrouting_rules %}
+-A POSTROUTING {{ rule }}
+{% endfor %}
+COMMIT

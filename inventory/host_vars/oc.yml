@@ -8,3 +8,42 @@ zabbix_agent_user_parameters:
   - 'updates-list[*],cat /var/tmp/updates-`basename $1`'
   - 'top,top -bn1; echo; ps wwlax'
   - 'qecr_stat[*],/usr/lib/zabbix/externalscripts/qecr "$1"'
+
+# --- firewall ---
+firewall_zabbix_agent_sources:
+  - 213.133.161.33
+  - 91.225.123.133
+  - 129.159.205.15
+  - 10.0.0.20
+# oc is itself a Zabbix server, so 10051 is open to the hosts it serves.
+firewall_zabbix_server_sources:
+  - 10.0.0.20
+  - 129.159.205.15
+  - 213.133.161.33
+  - 91.225.123.133
+  - 152.70.130.206
+  - 91.228.147.70
+  - 103.204.129.254
+  - 195.181.242.215
+  - 172.98.12.126
+  - 104.152.210.6
+firewall_tcp_ports: [24554, 25, 53, 80, 443, 5222, 5223, 5269, 5443, 9555, 9777]
+firewall_udp_ports: [53]
+firewall_udp_port_ranges: ['43200:44000', '60000:61000']
+firewall_extra_input_rules:
+  - '-p tcp -m tcp --dport 995 --tcp-flags FIN,SYN,RST,ACK SYN -j ACCEPT'
+  - '-p udp -m udp --dport 1194 -j ACCEPT'
+  - '-s 213.133.160.180/32 -p 47 -j ACCEPT'   # GRE
+firewall_forward_rules:
+  - '-s 213.133.161.32/29 -i tun+ -j ACCEPT'
+  - '-d 213.133.161.32/29 -o tun+ -j ACCEPT'
+  - '-s 10.10.0.0/23 -i tun+ -j ACCEPT'
+  - '-d 10.10.0.0/23 -o tun+ -j ACCEPT'
+firewall_extra_chains:
+  InstanceServices: "{{ firewall_oracle_instance_services }}"
+firewall_nat_prerouting_rules:
+  - '-p tcp -m addrtype --dst-type LOCAL -m tcp --dport 22 -j REDIRECT --to-ports 1'
+  - '-p tcp -m addrtype --dst-type LOCAL -m tcp --dport 922 -j REDIRECT --to-ports 22'
+firewall_nat_postrouting_rules:
+  - '-s 10.0.0.0/8 ! -d 10.0.0.0/8 -o tun+ -m addrtype --src-type LOCAL -j SNAT --to-source 213.133.164.6'
+  - '-s 10.0.0.0/8 ! -d 10.0.0.0/8 -j MASQUERADE'

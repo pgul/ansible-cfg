@@ -5,3 +5,12 @@ zabbix_agent_rpc_checks:
 zabbix_agent_user_parameters:
   - 'btc-testnet[*],bitcoin-cli -testnet4 $1 | jq .$2'
   - 'systemd-active[*],systemctl is-active --quiet -- "$1" && echo 1 || echo 0'
+
+# --- firewall ---
+firewall_zabbix_agent_sources:
+  - 213.133.161.33
+  - 213.133.164.6
+  - 129.159.205.15   # was written as .15/24 by hand, i.e. the whole /24
+firewall_tcp_ports: [9555, 49555]
+firewall_udp_ports: [53]
+firewall_udp_port_ranges: ['43200:44000']
