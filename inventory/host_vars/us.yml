@@ -1,0 +1,5 @@
+---
+zabbix_agent_user_parameters:
+  - 'check-mailq,/bin/ls /var/spool/exim4/input | grep -c -- ''-H$'''
+  - 'updates-list[*],cat /var/tmp/updates-`basename $1`'
+  - 'top,top -bn1; echo; ps wwlax'

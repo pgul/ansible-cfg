@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+# Правки руками будут затёрты. Меняй roles/zabbix_agent или host_vars.
+
+PidFile={{ zabbix_agent_pid_file }}
+LogFile={{ zabbix_agent_log_file }}
+LogFileSize={{ zabbix_agent_log_file_size }}
+
+Server={{ zabbix_agent_servers | join(',') }}
+ServerActive={{ zabbix_agent_servers_active | join(',') }}
+Hostname={{ zabbix_agent_hostname }}
+
+Include={{ zabbix_agent_include_dir }}/*.conf

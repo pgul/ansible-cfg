@@ -80,8 +80,8 @@ roles/<name>/
 | 0 | `playbooks/bootstrap` | биндинги dnf5 на Fedora; разово на новый хост            | есть   |
 | 1 | `common`              | пакеты, таймзона, синхронизация времени                  | есть   |
 | 2 | `users`               | пользователь gul, ssh-ключи, беспарольный sudo           | есть   |
-| 3 | `auto_updates`        | `unattended-upgrades` (Ubuntu) / `dnf-automatic` (Fedora)| —      |
-| 4 | `zabbix_agent`        | пакет из дистрибутива, конфиг шаблоном                   | —      |
+| 4 | `auto_updates`        | `unattended-upgrades` (Ubuntu) / `dnf-automatic` (Fedora)| —      |
+| 3 | `zabbix_agent`        | пакет из дистрибутива, конфиг шаблоном                   | есть   |
 | 5 | `cron_jobs`           | скрипты в `/usr/local/sbin` + systemd timers или cron    | —      |
 | 6 | `firewall`            | iptables + iptables-persistent / iptables-services       | —      |
 
@@ -114,6 +114,23 @@ roles/<name>/
   проверяет наличие: `includedir` без префикса — синтаксическая ошибка, которая
   положила бы sudo целиком.
 - **ho: `common_manage_time_sync` выключается автоматически** — это контейнер.
+- **happy: `zabbix_agent_manage: false`.** Конфиг агента там по старому пути
+  `/etc/zabbix_agentd.conf`, без `Include`, с двумя десятками UserParameter
+  плюс `SourceIP`, `ListenIP` и `StartAgents`. Общий шаблон снёс бы всё это.
+
+### Мониторинг
+
+Два Zabbix-сервера: `happy` (= `zabbix.happy.kiev.ua`, 213.133.161.33) и `oc`
+(= `zabbix.spelik.com`, 129.159.205.15). Список в `zabbix_agent_servers` сведён
+к ним двоим плюс `127.0.0.1`. Раньше по хостам были рассыпаны ещё
+`213.133.164.6` (`its.happy.kiev.ua`) и `91.225.123.133`
+(`osokorki.happy.kiev.ua`) — если с этих адресов кто-то опрашивает агентов,
+вернуть их в `roles/zabbix_agent/defaults/main.yml`.
+
+UserParameter'ы живут в `host_vars/<хост>.yml`. Проверки через JSON-RPC на
+localhost задаются словарём `zabbix_agent_rpc_checks` («имя: порт») — они
+отличались только портом, и одиннадцать почти одинаковых строк свелись к
+восьми парам. Всё остальное — в `zabbix_agent_user_parameters` целиком.
 
 `ho` — единственный контейнер в парке, и это влияет на роли: часы принадлежат
 хосту (`systemd-timesyncd` не стартует, `ConditionVirtualization=!container`),

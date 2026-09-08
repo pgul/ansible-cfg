@@ -18,3 +18,12 @@ common_time_sync_packages: [ntpsec]
 # Если tiger всё-таки должен иметь root — убрать этот флаг и раскатать общее
 # правило; если нет — оставить как есть.
 users_manage_sudoers: false
+
+# Агент Zabbix на happy роль тоже не трогает.
+#
+# Его конфиг лежит по старому пути /etc/zabbix_agentd.conf, без Include, и
+# содержит два десятка UserParameter (сенсоры, mdadm, ups, mysql, ping),
+# а также SourceIP, ListenIP и StartAgents, которых нет больше нигде.
+# Общий шаблон это всё снёс бы. Плюс happy — сам Zabbix-сервер версии 7.4,
+# тогда как на Ubuntu-хостах агент 7.0.
+zabbix_agent_manage: false

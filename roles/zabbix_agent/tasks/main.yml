@@ -1,0 +1,69 @@
+---
+- name: Установить агент
+  ansible.builtin.package:
+    name: "{{ zabbix_agent_package }}"
+    state: present
+
+# Все JSON-RPC проверки заканчиваются на «| jq», и без него UserParameter
+# возвращает ошибку вместо значения. На ho так и было: jq не установлен,
+# и обе проверки молча не работали.
+- name: Установить jq, если настроены JSON-RPC проверки
+  ansible.builtin.package:
+    name: jq
+    state: present
+  when: zabbix_agent_rpc_checks | length > 0
+
+# Пакет создаёт этот каталог сам, но на spelik агент писал в /var/log/zabbix,
+# а logrotate ротировал /var/log/zabbix-agent — то есть лог не ротировался
+# вовсе. Шаблон приводит путь к общему, а задача гарантирует, что каталог
+# существует до того, как агент попробует туда писать.
+- name: Обеспечить каталог для лога
+  ansible.builtin.file:
+    path: "{{ zabbix_agent_log_file | dirname }}"
+    state: directory
+    owner: zabbix
+    group: zabbix
+    mode: "0755"
+
+- name: Обеспечить каталог для UserParameter
+  ansible.builtin.file:
+    path: "{{ zabbix_agent_include_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Разложить UserParameter
+  ansible.builtin.template:
+    src: custom.conf.j2
+    dest: "{{ zabbix_agent_include_dir }}/custom.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Перезапустить zabbix-agent
+
+# На части хостов Include указывал на /etc/zabbix/zabbix_agentd.d. После
+# переезда на общий каталог старый файл остался бы лежать и, если Include
+# когда-нибудь вернут, задвоил бы те же ключи.
+- name: Убрать custom.conf из прежних include-каталогов
+  ansible.builtin.file:
+    path: "{{ item }}/custom.conf"
+    state: absent
+  loop: "{{ zabbix_agent_stale_include_dirs }}"
+  when: item != zabbix_agent_include_dir
+  notify: Перезапустить zabbix-agent
+
+- name: Разложить основной конфиг
+  ansible.builtin.template:
+    src: zabbix_agentd.conf.j2
+    dest: "{{ zabbix_agent_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Перезапустить zabbix-agent
+
+- name: Включить и запустить службу
+  ansible.builtin.service:
+    name: "{{ zabbix_agent_service }}"
+    state: started
+    enabled: true

@@ -1,0 +1,10 @@
+---
+zabbix_agent_rpc_checks:
+  qecr: 9667
+  erub: 9778
+  erub-testnet: 19778
+  qbtc-testnet: 19556
+
+zabbix_agent_user_parameters:
+  - 'updates-list[*],cat /var/tmp/updates-`basename $1`'
+  - 'top,top -bn1; echo; ps wwlax'
