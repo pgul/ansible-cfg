@@ -4,6 +4,7 @@ zabbix_agent_rpc_checks:
 
 zabbix_agent_user_parameters:
   - 'btc-testnet[*],bitcoin-cli -testnet4 $1 | jq .$2'
+  - 'chain-checkpoint[*],/usr/local/bin/zbx-chain-checkpoint "$1" "$2" "$3" "$4"'
   - 'systemd-active[*],systemctl is-active --quiet -- "$1" && echo 1 || echo 0'
 
 # --- firewall ---

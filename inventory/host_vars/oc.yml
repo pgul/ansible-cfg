@@ -8,6 +8,7 @@ zabbix_agent_user_parameters:
   - 'updates-list[*],cat /var/tmp/updates-`basename $1`'
   - 'top,top -bn1; echo; ps wwlax'
   - 'blockchain-stat[*],/etc/zabbix/externalscripts/blockchain-sql "$1" "$2"'
+  - 'chain-checkpoint[*],/usr/local/bin/zbx-chain-checkpoint "$1" "$2" "$3" "$4"'
 
 # --- firewall ---
 firewall_zabbix_agent_sources:
