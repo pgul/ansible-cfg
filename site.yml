@@ -20,8 +20,9 @@
 
 # Anything that can cost us access to the host goes here: one machine at a
 # time, aborting the whole run on the first failure, so a mistake reaches one
-# server instead of six. udp-link carries every ssh session (ProxyCommand in
-# ~/.ssh/config), and the firewall decides whether ssh is reachable at all.
+# server instead of six. sshd decides who may log in, udp-link carries every
+# session (ProxyCommand in ~/.ssh/config), and the firewall decides whether ssh
+# is reachable at all.
 - name: Access-critical roles
   hosts: all
   become: true
@@ -29,6 +30,8 @@
   serial: 1
   any_errors_fatal: true
   roles:
+    - role: sshd
+      when: sshd_manage | bool
     - role: udp_link
       when: udp_link_manage | bool
     - role: firewall

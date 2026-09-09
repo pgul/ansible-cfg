@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+# Manual edits will be overwritten. Change roles/sshd or host_vars.
+#
+# Named to sort early on purpose: sshd honours the first value it reads for a
+# directive, so this file must come before any other drop-in.
+
+PasswordAuthentication {{ sshd_password_authentication }}
+KbdInteractiveAuthentication {{ sshd_kbdinteractive_authentication }}
+PermitRootLogin {{ sshd_permit_root_login }}

@@ -1,0 +1,26 @@
+---
+sshd_manage: true
+
+# sshd keeps the FIRST value it sees for a directive, and the Include line sits
+# near the top of sshd_config — so a drop-in beats the main file, and an
+# earlier-sorting drop-in beats a later one. The "10-" prefix is what makes
+# this file win over 50-cloud-init.conf, which is where PasswordAuthentication
+# yes came from on node and spelik.
+sshd_dropin: /etc/ssh/sshd_config.d/10-ansible.conf
+sshd_config: /etc/ssh/sshd_config
+
+# Ubuntu calls the unit ssh.service, Fedora sshd.service. Both ship an alias
+# for the other name, but reloading the real one avoids surprises.
+sshd_service_by_os:
+  Debian: ssh
+  RedHat: sshd
+sshd_service: "{{ sshd_service_by_os[ansible_facts.os_family] }}"
+
+sshd_password_authentication: "no"
+sshd_permit_root_login: prohibit-password
+
+# The companion to PasswordAuthentication: with UsePAM yes, keyboard-interactive
+# can still ask for a password even when PasswordAuthentication is off. Already
+# "no" on all six hosts, so this changes nothing today and closes the hole for
+# whatever comes next.
+sshd_kbdinteractive_authentication: "no"

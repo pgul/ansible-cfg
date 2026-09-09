@@ -1,0 +1,45 @@
+---
+# Without the Include line the drop-in is never read, and the role would report
+# success while changing nothing that matters. Same trap as sudoers.d.
+- name: Check that sshd_config includes the drop-in directory
+  ansible.builtin.command: >-
+    grep -Eq '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' {{ sshd_config }}
+  changed_when: false
+  register: sshd_include
+  failed_when: sshd_include.rc != 0
+  check_mode: false
+
+- name: Install the login policy drop-in
+  ansible.builtin.template:
+    src: dropin.conf.j2
+    dest: "{{ sshd_dropin }}"
+    owner: root
+    group: root
+    mode: "0644"
+    validate: sshd -t -f %s
+  register: sshd_dropin_file
+
+# Not handlers, deliberately: handlers run at the end of the play, and the
+# order matters here — check the assembled config, reload, then prove that a
+# fresh login still works, all before the next role touches the host.
+#
+# validate above only parses this file on its own. This checks the whole
+# configuration as sshd will actually assemble it, before anything is reloaded.
+- name: Verify the assembled configuration  # noqa: no-handler
+  ansible.builtin.command: sshd -t
+  changed_when: false
+  when: sshd_dropin_file is changed
+
+- name: Reload sshd  # noqa: no-handler
+  ansible.builtin.systemd_service:
+    name: "{{ sshd_service }}"
+    state: reloaded
+  when: sshd_dropin_file is changed
+
+# Reload leaves existing sessions alone, so the connection we are riding on
+# proves nothing. Only a brand new one does.
+- name: Drop the ssh control connection
+  ansible.builtin.meta: reset_connection
+
+- name: Prove that a new ssh connection still works
+  ansible.builtin.ping:
