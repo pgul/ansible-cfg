@@ -1,0 +1,24 @@
+---
+# For a login shell bash reads the first of ~/.bash_profile, ~/.bash_login,
+# ~/.profile that exists — and stops there. Four of the six hosts have a
+# hand-written .bash_profile which sources .bashrc and never .profile, so a
+# .profile placed next to it would be a file that looks authoritative and is
+# never read. Better to leave it absent than to leave a lie.
+- name: Check for a .bash_profile that would shadow .profile
+  ansible.builtin.stat:
+    path: "{{ dotfiles_home }}/.bash_profile"
+  register: dotfiles_bash_profile
+
+- name: Seed the dotfiles that are missing
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ dotfiles_home }}/{{ item.dest }}"
+    owner: "{{ dotfiles_user }}"
+    group: "{{ dotfiles_user }}"
+    mode: "0644"
+    # The whole point: create when absent, never overwrite.
+    force: false
+  loop: "{{ dotfiles_files }}"
+  loop_control:
+    label: "{{ item.dest }}"
+  when: item.dest != '.profile' or not dotfiles_bash_profile.stat.exists

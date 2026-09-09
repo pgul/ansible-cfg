@@ -1,0 +1,16 @@
+---
+dotfiles_manage: true
+
+# Whose home these go into. The user itself is created by the users role.
+dotfiles_user: "{{ users_admin_name | default('gul') }}"
+dotfiles_home: "/home/{{ dotfiles_user }}"
+
+# The role SEEDS, it does not converge: an existing file is left alone. The
+# files on the six current hosts differ by tens of lines each — .vimrc by 13 to
+# 67 — and those differences are real local work, not drift worth flattening.
+# So this only fills in what a fresh host is missing.
+dotfiles_files:
+  - src: vimrc
+    dest: .vimrc
+  - src: profile
+    dest: .profile

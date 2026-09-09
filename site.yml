@@ -9,6 +9,8 @@
     # users comes first: everything else assumes the admin user and their sudo
     # are already in the expected state.
     - users
+    - role: dotfiles
+      when: dotfiles_manage | bool
     - common
     - local_scripts
     - role: zabbix_agent

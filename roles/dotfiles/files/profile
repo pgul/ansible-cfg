@@ -1,0 +1,51 @@
+# ~/.profile: executed by the command interpreter for login shells.
+# This file is not read by bash(1), if ~/.bash_profile or ~/.bash_login
+# exists.
+# see /usr/share/doc/bash/examples/startup-files for examples.
+# the files are located in the bash-doc package.
+
+# the default umask is set in /etc/profile; for setting the umask
+# for ssh logins, install and configure the libpam-umask package.
+#umask 022
+
+# if running bash
+if [ -n "$BASH_VERSION" ]; then
+    # include .bashrc if it exists
+    if [ -f "$HOME/.bashrc" ]; then
+	. "$HOME/.bashrc"
+    fi
+fi
+
+# set PATH so it includes user's private bin if it exists
+if [ -d "$HOME/bin" ] ; then
+    PATH="$HOME/bin:$PATH"
+fi
+
+alias vi=vim
+LESS=-RM
+LESSCHARSET=utf-8
+LESSCHARDEF="bccc4b."
+#LESSOPEN='|/opt/local/bin/lesspipe.sh %s'
+export LC_TIME=C
+export LC_MESSAGES=C
+export LC_NUMERIC=C
+#export LANG=C
+export MAILCHECK=-1
+export EDITOR=vim
+export GREP_COLORS="mt=1"
+export HISTCONTROL=ignoredups
+export PAGER=less
+export VISUAL=vim
+export BLOCKSIZE=1k
+[ -z "$DISPLAY" ] && export DISPLAY=":0.0"
+export CVS_RSH=ssh
+
+PS1=\\u@\\h\;\\w\>
+PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME%%.*}:${PWD/$HOME/\~}\007"'
+
+export DEBEMAIL='pkgbuild@w30.dev'
+export DEBFULLNAME='Package Builder'
+export DEBUILD_DPKG_BUILDPACKAGE_OPTS="-uc -us"
+
+alias df="df -x fuse"
+alias qbitcoin-cli='qbitcoin-cli -f ~gul/.qbitcoin/qbitcoin.conf'
