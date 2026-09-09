@@ -221,9 +221,9 @@ roles/<name>/
 пакет. Поставил пакет — роль начала применяться сама. Управляются **ho**
 (testnet4) и **node** (mainnet плюс testnet4, два юнита с общим datadir).
 happy исключён: там bitcoind из пакета Fedora, юнит читает
-`/etc/sysconfig/bitcoin`, а конфиг лежит в `/etc/bitcoin/bitcoin.conf`.
+`/etc/sysconfig/bitcoin`.
 
-**Пароли не переписываются.** Существующий `/etc/bitcoin.conf` — источник
+**Пароли не переписываются.** Существующий `/etc/bitcoin/bitcoin.conf` — источник
 истины: его пароли уже принимает работающий демон, а смена потребовала бы
 рестарта, что на node означает mainnet-узел с 843 GiB цепочки. Роль копирует
 этот файл клиентам (`~gul/.bitcoin/` и `/var/lib/zabbix/.bitcoin/`) через

@@ -75,10 +75,10 @@ rpc() {
     if [ -n "$auth" ]; then
         reply=$(printf 'user = "%s"\n' "$auth" |
                 curl -sS -K - --max-time 10 -w '\n%{http_code}' \
-                     -H 'content-type: text/plain' --data-binary "$body" "$url")
+                     -H 'content-type: application/json' --data-binary "$body" "$url")
     else
         reply=$(curl -sS --max-time 10 -w '\n%{http_code}' \
-                     -H 'content-type: text/plain' --data-binary "$body" "$url")
+                     -H 'content-type: application/json' --data-binary "$body" "$url")
     fi
 
     code=$(printf '%s' "$reply" | tail -n 1)
@@ -109,6 +109,11 @@ btime() {
     printf '%s' "$bt_header" | jq -e -r .time
 }
 
+blockcount() {
+    bc_info=$(rpc getblockchaininfo '[]')
+    printf '%s' "$bc_info" | jq -e -r .blocks
+}
+
 now=$(date +%s)
 t=$(( now / period * period - lag ))
 
@@ -133,7 +138,7 @@ else
         [ "$lo_time" -le "$t" ] && lo=$cached_h
     fi
 
-    hi=$(rpc getblockcount '[]')
+    hi=$(blockcount)
 
     # The highest height in [lo, hi] whose block is at or before T.
     while [ "$lo" -lt "$hi" ]; do

@@ -4,7 +4,7 @@
 # credentials that differ per host.
 bitcoin_manage: true
 
-bitcoin_config: /etc/bitcoin.conf
+bitcoin_config: /etc/bitcoin/bitcoin.conf
 bitcoin_config_owner: root
 bitcoin_config_group: bitcoin
 bitcoin_config_mode: "0640"

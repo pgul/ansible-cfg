@@ -10,7 +10,7 @@
 
 # Note the "is not none": with fail_key: false the getent module still puts the
 # key in the dict, with a null value, when the group does not exist. Testing
-# for the key alone matches everywhere and would have created /etc/bitcoin.conf
+# for the key alone matches everywhere and would have created /etc/bitcoin/bitcoin.conf
 # with fresh passwords on oc, spelik and us.
 - name: Manage the bitcoin configuration
   when: ansible_facts.getent_group.bitcoin | default(none) is not none
