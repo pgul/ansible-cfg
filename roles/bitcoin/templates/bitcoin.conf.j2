@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# Written once, when the host had no bitcoin.conf. Ansible does not rewrite it
+# afterwards: the RPC passwords below are what the running daemon accepts.
+rpcuser={{ bitcoin_rpcuser }}
+rpcpassword={{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_letters', 'digits'], length=32) }}
+rpcport={{ bitcoin_main_rpcport }}
+rpcbind={{ bitcoin_rpcbind }}
+{% for section in bitcoin_sections %}
+
+[{{ section.name }}]
+rpcuser={{ bitcoin_rpcuser }}
+rpcpassword={{ lookup('ansible.builtin.password', '/dev/null', chars=['ascii_letters', 'digits'], length=32) }}
+rpcport={{ section.rpcport }}
+rpcbind={{ bitcoin_rpcbind }}
+{% endfor %}

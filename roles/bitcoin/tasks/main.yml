@@ -1,0 +1,66 @@
+---
+# The .deb creates the bitcoin group, so its presence is what says "a node
+# lives here". Install the package and this role starts applying by itself;
+# on a host without it, everything below is skipped.
+- name: Look for the bitcoin group
+  ansible.builtin.getent:
+    database: group
+    key: bitcoin
+    fail_key: false
+
+# Note the "is not none": with fail_key: false the getent module still puts the
+# key in the dict, with a null value, when the group does not exist. Testing
+# for the key alone matches everywhere and would have created /etc/bitcoin.conf
+# with fresh passwords on oc, spelik and us.
+- name: Manage the bitcoin configuration
+  when: ansible_facts.getent_group.bitcoin | default(none) is not none
+  block:
+    - name: Check whether the daemon config already exists
+      ansible.builtin.stat:
+        path: "{{ bitcoin_config }}"
+      register: bitcoin_config_stat
+
+    # Only ever on a host that has none. An existing file is the source of
+    # truth for the credentials and is never rewritten.
+    - name: Create the daemon config with fresh RPC credentials
+      ansible.builtin.template:
+        src: bitcoin.conf.j2
+        dest: "{{ bitcoin_config }}"
+        owner: "{{ bitcoin_config_owner }}"
+        group: "{{ bitcoin_config_group }}"
+        mode: "{{ bitcoin_config_mode }}"
+      # The rendered file contains generated RPC passwords.
+      no_log: true
+      when: not bitcoin_config_stat.stat.exists
+
+    - name: Correct the daemon config ownership and mode
+      ansible.builtin.file:
+        path: "{{ bitcoin_config }}"
+        owner: "{{ bitcoin_config_owner }}"
+        group: "{{ bitcoin_config_group }}"
+        mode: "{{ bitcoin_config_mode }}"
+
+    - name: Create the client config directories
+      ansible.builtin.file:
+        path: "{{ item.dir }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.dir_mode }}"
+      loop: "{{ bitcoin_client_configs }}"
+      loop_control:
+        label: "{{ item.dir }}"
+
+    # remote_src keeps the credentials on the host. A plain copy would read the
+    # file into Ansible and print it in --diff.
+    - name: Give each client the daemon's config
+      ansible.builtin.copy:
+        src: "{{ bitcoin_config }}"
+        dest: "{{ item.dir }}/bitcoin.conf"
+        remote_src: true
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.file_mode }}"
+      loop: "{{ bitcoin_client_configs }}"
+      loop_control:
+        label: "{{ item.dir }}/bitcoin.conf"

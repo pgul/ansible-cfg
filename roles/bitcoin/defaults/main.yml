@@ -1,0 +1,40 @@
+---
+# The user, group, binaries and systemd units come from the .deb. This role
+# owns only what a package cannot ship: the config, because it holds RPC
+# credentials that differ per host.
+bitcoin_manage: true
+
+bitcoin_config: /etc/bitcoin.conf
+bitcoin_config_owner: root
+bitcoin_config_group: bitcoin
+bitcoin_config_mode: "0640"
+
+# Everyone who runs bitcoin-cli needs the same credentials, so the daemon's
+# config is copied verbatim to each client's own ~/.bitcoin/bitcoin.conf.
+# Copied on the host itself, never through the control machine: the passwords
+# would otherwise pass through Ansible and show up in --diff output.
+bitcoin_client_configs:
+  - dir: "/home/{{ users_admin_name | default('gul') }}/.bitcoin"
+    owner: "{{ users_admin_name | default('gul') }}"
+    group: "{{ users_admin_name | default('gul') }}"
+    dir_mode: "0700"
+    file_mode: "0600"
+  - dir: /var/lib/zabbix/.bitcoin
+    owner: zabbix
+    group: root
+    dir_mode: "0750"
+    file_mode: "0640"
+
+# --- Only used when the config does not exist yet, i.e. on a brand new host ---
+#
+# On an existing host the file is left exactly as it is: its passwords are the
+# ones the running daemon already accepts, and rewriting them would need a
+# restart — on node that means a mainnet node with 843 GiB of chain data.
+bitcoin_rpcbind: 127.0.0.1
+bitcoin_rpcuser: bitcoin
+bitcoin_main_rpcport: 8332
+bitcoin_sections:
+  - name: test
+    rpcport: 18332
+  - name: testnet4
+    rpcport: 48332

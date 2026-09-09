@@ -50,3 +50,9 @@ mariadb_manage: false
 # path. On the Debian hosts the .deb puts it in /usr/bin anyway, so this also
 # makes the fleet consistent.
 udp_link_prefix: /usr
+
+# The bitcoin node on happy is not managed here either. Its bitcoind comes from
+# Fedora's bitcoin-core package, whose unit reads /etc/sysconfig/bitcoin and
+# keeps the config at /etc/bitcoin/bitcoin.conf — a different shape from the
+# Ubuntu hosts, where the config is /etc/bitcoin.conf and the units are ours.
+bitcoin_manage: false
