@@ -1,4 +1,13 @@
 ---
+# The fleet's own QBitcoin nodes. The P2P port 9555 is not a public service:
+# these peers talk to each other and to nobody else, so the address list lives
+# here once instead of being repeated in every host_vars file that needs it.
+firewall_qbtc_peers:
+  - 5.175.211.176      # brr.spelik.com
+  - 172.98.12.126      # spelik = backup.spelik.com
+  - 104.152.210.6      # node.spelik.com
+  - 153.75.233.174     # sin.spelik.com
+
 # yamllint disable rule:line-length
 # Each rule carries Oracle's own --comment text verbatim; wrapping the lines
 # would change the rules, so the length check is off for this file only.

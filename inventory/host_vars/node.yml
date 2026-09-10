@@ -12,6 +12,13 @@ firewall_zabbix_agent_sources:
   - 213.133.161.33
   - 213.133.164.6
   - 129.159.205.15   # was written as .15/24 by hand, i.e. the whole /24
-firewall_tcp_ports: [9555, 49555]
+# 9555 is QBitcoin mainnet P2P and is deliberately NOT public — only the other
+# nodes of the fleet reach it (the list lives in group_vars/all/firewall.yml).
+firewall_restricted_tcp_ports:
+  9555: "{{ firewall_qbtc_peers }}"
+# 19555 is QBitcoin testnet P2P — the port qbitcoin-testnet.service actually
+# listens on here, and the one ho already opens. It replaces 49555, which was
+# open to everyone while nothing has ever listened on it.
+firewall_tcp_ports: [19555]
 firewall_udp_ports: [53]
 firewall_udp_port_ranges: ['43200:44000']

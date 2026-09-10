@@ -27,7 +27,15 @@ firewall_zabbix_server_port: 10051
 firewall_zabbix_server_sources: []
 
 # --- Per-host openings ---
+# Ports open to everyone.
 firewall_tcp_ports: []
+
+# Ports open only to named sources, as "port: [addresses]". Each address gets
+# its own ACCEPT and everything else falls through to the REJECT at the end —
+# so a port listed here is closed to the rest of the internet, which is the
+# whole point. Do not also list such a port in firewall_tcp_ports: the blanket
+# rule sits later in the chain, but ACCEPT is ACCEPT and it would open it.
+firewall_restricted_tcp_ports: {}
 firewall_udp_ports: []
 firewall_udp_port_ranges: []
 

@@ -50,17 +50,26 @@
       loop: "{{ bitcoin_client_configs }}"
       loop_control:
         label: "{{ item.dir }}"
+      register: bitcoin_client_dirs
 
     # remote_src keeps the credentials on the host. A plain copy would read the
     # file into Ansible and print it in --diff.
+    #
+    # The loop runs over the results of the task above rather than over the list
+    # itself, so that each copy can see whether its directory was really there.
+    # Under --check a directory that does not exist yet is only reported as
+    # created, and copying into it fails outright — which is what a brand new
+    # host looked like. Skipping costs nothing: a file cannot exist where its
+    # directory does not.
     - name: Give each client the daemon's config
       ansible.builtin.copy:
         src: "{{ bitcoin_config }}"
-        dest: "{{ item.dir }}/bitcoin.conf"
+        dest: "{{ item.item.dir }}/bitcoin.conf"
         remote_src: true
-        owner: "{{ item.owner }}"
-        group: "{{ item.group }}"
-        mode: "{{ item.file_mode }}"
-      loop: "{{ bitcoin_client_configs }}"
+        owner: "{{ item.item.owner }}"
+        group: "{{ item.item.group }}"
+        mode: "{{ item.item.file_mode }}"
+      loop: "{{ bitcoin_client_dirs.results }}"
       loop_control:
-        label: "{{ item.dir }}/bitcoin.conf"
+        label: "{{ item.item.dir }}/bitcoin.conf"
+      when: not (ansible_check_mode and item is changed)

@@ -28,6 +28,16 @@ udp_link_binary_by_os:
   RedHat: "{{ udp_link_prefix }}/bin/udp-link"
 udp_link_binary: "{{ udp_link_binary_by_os[ansible_facts.os_family] }}"
 
+# Paths where a hand-built binary would shadow the package we install into
+# /usr/bin: both come before it in root's PATH, and /usr/sbin comes before it
+# in an ssh session's PATH too — which is the one that matters, because that is
+# where the remote end of udp-link is started from. node had a leftover in
+# /usr/local/bin, brr and sin have one in /usr/sbin. Used on Debian only: on
+# Fedora /usr/local/bin is where the role installs on purpose.
+udp_link_shadow_paths:
+  - /usr/local/bin/udp-link
+  - /usr/sbin/udp-link
+
 udp_link_build_packages_by_os:
   Debian: [debhelper, dpkg-dev, gcc, git, make, pkg-config]
   RedHat: [gcc, git, make, pkgconf-pkg-config]

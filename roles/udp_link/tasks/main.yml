@@ -95,14 +95,15 @@
         deb: "{{ udp_link_deb.files[0].path }}"
       when: ansible_facts.os_family == 'Debian'
 
-    # /usr/local/bin comes before /usr/bin in root's PATH, so a leftover hand
-    # build there would keep winning over the package we just installed. That
-    # is exactly the state node was in. On Fedora the same path is where the
-    # role installs on purpose, hence Debian only.
-    - name: Remove a hand-built binary that would shadow the package
+    # A leftover hand build in a directory that PATH searches before /usr/bin
+    # keeps winning over the package we just installed. node was in that state
+    # with /usr/local/bin, brr and sin with /usr/sbin. On Fedora /usr/local/bin
+    # is where the role installs on purpose, hence Debian only.
+    - name: Remove hand-built binaries that would shadow the package
       ansible.builtin.file:
-        path: /usr/local/bin/udp-link
+        path: "{{ item }}"
         state: absent
+      loop: "{{ udp_link_shadow_paths }}"
       when: ansible_facts.os_family == 'Debian'
 
     # Fedora: the source tree carries no rpm packaging, so build in place.

@@ -1,0 +1,23 @@
+---
+# chrony, not systemd-timesyncd. The systemd-timesyncd package is not installed
+# here at all (systemctl reports it as not-found), so the role default would try
+# to start a unit that does not exist. Same on sin; node has timesyncd instead.
+common_time_sync_service: chrony
+common_time_sync_packages: [chrony]
+
+# --- firewall ---
+# 9555 is QBitcoin mainnet P2P and is deliberately NOT public — only the other
+# nodes of the fleet reach it (the list lives in group_vars/all/firewall.yml).
+# The daemon is not running here yet; the rule is in place for when it is.
+firewall_restricted_tcp_ports:
+  9555: "{{ firewall_qbtc_peers }}"
+# Nothing else is offered to the internet: bitcoind's 8333 was never open here
+# and is not opened now, and 49555 — open to everyone, with nothing behind it,
+# copied over from node by hand — goes away.
+firewall_tcp_ports: []
+# Kept as found. Inert in practice: only systemd-resolved listens on 53, and it
+# binds 127.0.0.53 and 127.0.0.54, so nothing off-host can reach it anyway.
+firewall_udp_ports: [53]
+# udp-link's port range. Without this the host is unreachable — every ssh
+# session to it goes through the ProxyCommand.
+firewall_udp_port_ranges: ['43200:44000']

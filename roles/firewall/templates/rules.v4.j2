@@ -24,6 +24,11 @@
 {% for src in firewall_zabbix_server_sources %}
 -A INPUT -s {{ src }}/32 -p tcp -m state --state NEW -m tcp --dport {{ firewall_zabbix_server_port }} -j ACCEPT
 {% endfor %}
+{% for port, sources in firewall_restricted_tcp_ports | dictsort %}
+{% for src in sources %}
+-A INPUT -s {{ src }}/32 -p tcp -m state --state NEW -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% endfor %}
 {% for port in firewall_tcp_ports %}
 -A INPUT -p tcp -m state --state NEW -m tcp --dport {{ port }} -j ACCEPT
 {% endfor %}
