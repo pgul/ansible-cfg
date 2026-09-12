@@ -30,3 +30,11 @@ firewall_udp_port_ranges: ['43200:44000']
 # a fresh, empty database. With it, the service fails until the volume is
 # mounted and has to be started by hand afterwards: `systemctl start mariadb`.
 mariadb_required_mounts: [/var/lib/mariadb]
+
+# --- bitcoin ---
+# Only the blocks live on the separate volume: /data/bitcoin/blocks is
+# bind-mounted (nofail) onto /var/lib/bitcoin/blocks, the rest of the datadir is
+# on the root fs. Hence the dependency is on the blocks directory, not on the
+# datadir. Stop timeout as on sin: chainstate flush on mainnet takes minutes.
+bitcoin_required_mounts: [/var/lib/bitcoin/blocks]
+bitcoin_stop_timeout_sec: 600

@@ -1,0 +1,6 @@
+---
+# A drop-in changes only how the unit will be started or stopped next time, so
+# systemd just needs to re-read it. No restart: the running daemon is not touched.
+- name: Reload systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true

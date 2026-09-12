@@ -30,3 +30,10 @@ firewall_udp_port_ranges: ['43200:44000']
 # a fresh, empty database. With it, the service fails until the volume is
 # mounted and has to be started by hand afterwards: `systemctl start mariadb`.
 mariadb_required_mounts: [/var/lib/mariadb]
+
+# --- bitcoin ---
+# Chain data is its own LV (vg0/data) mounted at /var/lib/bitcoin: never start
+# bitcoind against the empty mount point. Stopping flushes the chainstate,
+# which takes minutes on mainnet — the stock 90 s would SIGKILL it.
+bitcoin_required_mounts: [/var/lib/bitcoin]
+bitcoin_stop_timeout_sec: 600

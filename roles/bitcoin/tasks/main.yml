@@ -73,3 +73,42 @@
       loop_control:
         label: "{{ item.item.dir }}/bitcoin.conf"
       when: not (ansible_check_mode and item is changed)
+
+    # --- systemd: mount dependency and stop timeout for the daemon's unit ---
+    - name: Create the systemd drop-in directory
+      ansible.builtin.file:
+        path: "{{ bitcoin_dropin_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      when: bitcoin_dropin_wanted | bool
+
+    - name: Make the unit depend on its mounts and give it time to stop
+      ansible.builtin.template:
+        src: ansible.conf.j2
+        dest: "{{ bitcoin_dropin_dir }}/ansible.conf"
+        owner: root
+        group: root
+        mode: "0644"
+      when: bitcoin_dropin_wanted | bool
+      notify: Reload systemd
+
+    # Hosts with neither setting get the stock unit back, so dropping the
+    # variables from host_vars is enough to undo the change.
+    - name: Remove the drop-in where nothing is overridden
+      ansible.builtin.file:
+        path: "{{ bitcoin_dropin_dir }}/ansible.conf"
+        state: absent
+      when: not (bitcoin_dropin_wanted | bool)
+      notify: Reload systemd
+
+    # The same two settings used to live in a hand-made override.conf on brr
+    # and sin (the file `systemctl edit` creates). Two drop-ins saying the same
+    # thing would be confusing, and a stale one would win the day someone
+    # changes host_vars — so the role owns the settings and the old file goes.
+    - name: Remove the hand-made override.conf the role supersedes
+      ansible.builtin.file:
+        path: "{{ bitcoin_dropin_dir }}/override.conf"
+        state: absent
+      notify: Reload systemd

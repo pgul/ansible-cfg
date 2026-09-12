@@ -38,3 +38,26 @@ bitcoin_sections:
     rpcport: 18332
   - name: testnet4
     rpcport: 48332
+
+# --- systemd drop-in for the daemon's unit ---
+#
+# The unit the package ships. Ubuntu's own build calls it bitcoind; the
+# upstream-style package on alpha calls it bitcoin. Override in host_vars.
+bitcoin_service: bitcoind
+bitcoin_dropin_dir: "/etc/systemd/system/{{ bitcoin_service }}.service.d"
+
+# Mounts the daemon must not start without. Empty means the stock unit is left
+# alone. Set per host where the chain data lives on its own volume: systemd then
+# refuses to start bitcoind until every listed path is mounted, instead of
+# letting it come up on the empty mount point and start a fresh IBD there.
+bitcoin_required_mounts: []
+
+# TimeoutStopSec for the daemon; empty keeps the packaged value (90 s). Flushing
+# the chainstate on shutdown can take minutes on a mainnet node, and the stock
+# timeout would SIGKILL it half-way — set 600 on such hosts.
+bitcoin_stop_timeout_sec: ""
+
+# Derived: whether the drop-in has anything to say.
+bitcoin_dropin_wanted: >-
+  {{ bitcoin_required_mounts | length > 0
+     or (bitcoin_stop_timeout_sec | string | length > 0) }}

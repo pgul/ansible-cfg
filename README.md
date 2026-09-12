@@ -91,6 +91,7 @@ roles/<name>/
 | 4 | `local_scripts`  | собственные скрипты в `/usr/local/bin`                   |
 | 5 | `zabbix_agent`   | пакет из дистрибутива, конфиг шаблоном                   |
 | 6 | `mariadb`        | `mysqldump.cnf` в drop-in каталоге MariaDB; зависимость юнита от монтирования datadir |
+| 7 | `bitcoin`        | `bitcoin.conf` демона и клиентов; drop-in юнита: зависимость от монтирования, таймаут остановки |
 
 **Плей 2 — то, что может стоить доступа к машине. `serial: 1`, остановка при
 первой ошибке:**
@@ -154,6 +155,11 @@ roles/<name>/
 - **brr, sin: `mariadb_required_mounts: [/var/lib/mariadb]`.** Datadir на
   LUKS-томе с `nofail`; без `RequiresMountsFor=` сервер стартовал бы на пустом
   каталоге. Подробности в разделе про MariaDB.
+- **brr, sin: `bitcoin_required_mounts` и `bitcoin_stop_timeout_sec: 600`.** Цепочка
+  на отдельном LV: на sin это весь `/var/lib/bitcoin`, на brr только
+  `/var/lib/bitcoin/blocks` (bind из `/data/bitcoin/blocks`). Без зависимости
+  bitcoind стартовал бы на пустом каталоге и начал IBD с нуля. Подробности в
+  разделе про bitcoin.
 - **happy: `zabbix_agent_manage: false`.** Конфиг агента там по старому пути
   `/etc/zabbix_agentd.conf`, без `Include`, с двумя десятками UserParameter
   плюс `SourceIP`, `ListenIP` и `StartAgents`. Общий шаблон снёс бы всё это.
@@ -259,6 +265,29 @@ happy исключён: там bitcoind из пакета Fedora, юнит чи�
 
 Заодно исправлены права: `~gul/.bitcoin/bitcoin.conf` был **664 на ho**, то есть
 пароли RPC читались любым пользователем. Стало 600, каталог 700.
+
+**Drop-in юнита.** Две настройки, которые нужны там, где цепочка лежит на
+отдельном томе, роль пишет в
+`/etc/systemd/system/<юнит>.service.d/ansible.conf`:
+
+- `bitcoin_required_mounts` (по умолчанию пусто) → `RequiresMountsFor=`: systemd
+  не запустит демон, пока каждый путь не смонтирован. Иначе bitcoind поднимается
+  на пустой точке монтирования и молча начинает качать цепочку с нуля.
+- `bitcoin_stop_timeout_sec` (по умолчанию пусто, то есть пакетные 90 с) →
+  `TimeoutStopSec=`. На остановке bitcoind сбрасывает chainstate на диск, на
+  mainnet это минуты; 90 с закончились бы SIGKILL и повреждённой базой.
+
+Если не задано ни то, ни другое, файла нет. Имя юнита — `bitcoin_service`, по
+умолчанию `bitcoind`; на alpha пакет называет его `bitcoin`. После изменения
+drop-in'а только `daemon-reload`, работающий демон не трогается.
+
+Раньше то же самое лежало на brr и sin в ручном `override.conf` (файл, который
+делает `systemctl edit`). Роль его удаляет: два drop-in'а с одним и тем же
+содержимым путают, а забытый ручной перебил бы host_vars.
+
+Задано на **brr и sin**, оба по 600 с. На sin зависимость от `/var/lib/bitcoin`
+(весь datadir — LV `vg0/data`), на brr — от `/var/lib/bitcoin/blocks`: там на
+отдельном томе только блоки, bind из `/data/bitcoin/blocks` с `nofail`.
 
 ### udp-link
 

@@ -1,0 +1,15 @@
+# {{ ansible_managed }}
+# Manual edits will be overwritten. Change bitcoin_required_mounts and
+# bitcoin_stop_timeout_sec in host_vars.
+{% if bitcoin_required_mounts | length > 0 %}
+[Unit]
+# Requires= plus After= on the mount unit of each path and of its parents. If
+# the mount is not there at boot, the daemon fails with a dependency error
+# instead of starting on an empty directory.
+RequiresMountsFor={{ bitcoin_required_mounts | join(' ') }}
+{% endif %}
+{% if bitcoin_stop_timeout_sec | string | length > 0 %}
+
+[Service]
+TimeoutStopSec={{ bitcoin_stop_timeout_sec }}
+{% endif %}
