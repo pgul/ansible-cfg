@@ -90,7 +90,7 @@ roles/<name>/
 | 3 | `common`         | пакеты, таймзона, синхронизация времени                  |
 | 4 | `local_scripts`  | собственные скрипты в `/usr/local/bin`                   |
 | 5 | `zabbix_agent`   | пакет из дистрибутива, конфиг шаблоном                   |
-| 6 | `mariadb`        | `mysqldump.cnf` в drop-in каталоге MariaDB               |
+| 6 | `mariadb`        | `mysqldump.cnf` в drop-in каталоге MariaDB; зависимость юнита от монтирования datadir |
 
 **Плей 2 — то, что может стоить доступа к машине. `serial: 1`, остановка при
 первой ошибке:**
@@ -151,6 +151,9 @@ roles/<name>/
   chrony. Дефолт роли пытался бы запустить несуществующий юнит. Указано именно
   `chrony`, а не `chronyd`: на Ubuntu второе — алиас, реальный юнит первый
   (на Fedora, у happy, наоборот).
+- **brr, sin: `mariadb_required_mounts: [/var/lib/mariadb]`.** Datadir на
+  LUKS-томе с `nofail`; без `RequiresMountsFor=` сервер стартовал бы на пустом
+  каталоге. Подробности в разделе про MariaDB.
 - **happy: `zabbix_agent_manage: false`.** Конфиг агента там по старому пути
   `/etc/zabbix_agentd.conf`, без `Include`, с двумя десятками UserParameter
   плюс `SourceIP`, `ListenIP` и `StartAgents`. Общий шаблон снёс бы всё это.
@@ -200,6 +203,22 @@ roles/<name>/
 `max_allowed_packet` сведён к **32M**. До этого на node было 16M, на остальных
 трёх 32M; выбрано большее, потому что уменьшение лимита ломает дамп таблицы
 с крупной строкой, а увеличение безопасно.
+
+**Зависимость от монтирования.** Список `mariadb_required_mounts` (по умолчанию
+пустой) превращается в drop-in `/etc/systemd/system/mariadb.service.d/mounts.conf`
+с `RequiresMountsFor=`: systemd не запустит сервер, пока каждый из путей не
+смонтирован. Нужно там, где datadir лежит на отдельном томе: без зависимости
+mariadb стартует поверх пустой точки монтирования и молча заводит новую пустую
+базу. После изменения drop-in'а делается только `daemon-reload`, работающий
+сервер не трогается — зависимость влияет на следующий запуск. Пустой список
+убирает файл; остальные drop-in'ы в каталоге роль не трогает.
+
+Задано на **brr и sin**: `/var/lib/mariadb`. Там это bind из `/vs/mariadb`, а
+`/vs` — LUKS-том, который открывается ключом из `/run/fscryptpwd`; и в crypttab,
+и в fstab он `nofail`, так что загрузка без ключа проходит, оставляя
+`/var/lib/mariadb` пустым каталогом. Оборотная сторона: если тома при загрузке
+нет, `mariadb.service` падает с dependency failed, и после ручного открытия тома
+его надо запустить руками — `systemctl start mariadb`.
 
 ### sshd
 

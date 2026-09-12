@@ -15,3 +15,33 @@
   # reads it afresh on every invocation. Restarting the server would change
   # nothing and would interrupt whatever is connected.
   when: mariadb_conf_dir_stat.stat.isdir | default(false)
+
+# --- systemd: start only once the datadir is mounted ---
+- name: Create the systemd drop-in directory
+  ansible.builtin.file:
+    path: "{{ mariadb_dropin_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: mariadb_required_mounts | length > 0
+
+- name: Make the service depend on its mounts
+  ansible.builtin.template:
+    src: mounts.conf.j2
+    dest: "{{ mariadb_dropin_dir }}/mounts.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  when: mariadb_required_mounts | length > 0
+  notify: Reload systemd
+
+# Hosts with an empty list get the stock unit back, so dropping the variable
+# from host_vars is enough to undo the dependency. The directory itself may
+# hold hand-made drop-ins and is left alone.
+- name: Remove the mounts drop-in where no mounts are required
+  ansible.builtin.file:
+    path: "{{ mariadb_dropin_dir }}/mounts.conf"
+    state: absent
+  when: mariadb_required_mounts | length == 0
+  notify: Reload systemd

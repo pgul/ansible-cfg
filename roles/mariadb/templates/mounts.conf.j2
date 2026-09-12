@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# Manual edits will be overwritten. Change mariadb_required_mounts in host_vars.
+[Unit]
+# Requires= plus After= on the mount unit of each path and of its parents. If
+# the mount is not there at boot, the service fails with a dependency error
+# instead of starting on an empty directory.
+RequiresMountsFor={{ mariadb_required_mounts | join(' ') }}

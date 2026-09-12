@@ -21,3 +21,12 @@ firewall_udp_ports: [53]
 # udp-link's port range. Without this the host is unreachable — every ssh
 # session to it goes through the ProxyCommand.
 firewall_udp_port_ranges: ['43200:44000']
+
+# --- mariadb ---
+# The datadir is a bind mount of /vs/mariadb, and /vs is a LUKS volume unlocked
+# with a key from /run/fscryptpwd — both are "nofail" in crypttab and fstab, so
+# a boot without the key succeeds with /var/lib/mariadb left as an empty
+# directory. Without this dependency mariadb would start on it and initialise
+# a fresh, empty database. With it, the service fails until the volume is
+# mounted and has to be started by hand afterwards: `systemctl start mariadb`.
+mariadb_required_mounts: [/var/lib/mariadb]

@@ -16,3 +16,14 @@ mariadb_conf_dir: "{{ mariadb_conf_dir_by_os[ansible_facts.os_family] }}"
 # quote-names  — backtick identifiers, so a table called "order" still restores
 # max_allowed_packet — the client-side ceiling on a single row
 mariadb_mysqldump_max_allowed_packet: 32M
+
+# Mounts the server must not start without. Empty means the stock unit is left
+# alone. Set per host where the datadir lives on a separately mounted volume:
+# systemd then refuses to start mariadb until every listed path is mounted,
+# instead of letting it come up on the empty mount point and initialise a
+# fresh, empty database there.
+mariadb_required_mounts: []
+
+# Unit name on both distributions; mysql.service and mysqld.service are aliases.
+mariadb_service: mariadb
+mariadb_dropin_dir: "/etc/systemd/system/{{ mariadb_service }}.service.d"
