@@ -14,5 +14,22 @@ zabbix_agent_user_parameters:
 # Not managed here. Docker writes 24 filter rules and 11 nat rules at runtime,
 # and loading a static ruleset would erase them until dockerd is restarted.
 # Its INPUT policy is also ACCEPT while the other four are DROP — a separate
-# question, to be settled by hand.
+# question, to be settled by hand. The same holds for IPv6: ip6tables here
+# carries Docker's own chains and policy ACCEPT in both filter and nat.
 firewall_manage: false
+
+# 9555 (QBitcoin mainnet P2P) open to everyone, on both stacks.
+#
+# These two lines DO NOTHING TODAY. site.yml runs the firewall role under
+# "when: firewall_manage", so with the flag above the role — and every variable
+# below it — is skipped. They are here because the decision is worth recording
+# where the rest of spelik's firewall intent lives, and because they are what
+# takes effect the day the Docker question is settled and the flag flips.
+#
+# Until then the port has to be opened by hand:
+#     iptables  -I INPUT -p tcp -m state --state NEW --dport 9555 -j ACCEPT
+#     ip6tables -I INPUT -p tcp -m state --state NEW --dport 9555 -j ACCEPT
+# On a host whose INPUT policy is ACCEPT that is already the effective state,
+# so the rules matter only once the policy is tightened.
+firewall_tcp_ports: [9555]
+firewall_v6_tcp_ports: [9555]

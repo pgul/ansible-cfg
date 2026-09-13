@@ -16,6 +16,8 @@
     name: iptables-persistent
     state: present
 
+# The unit restores rules.v4 and rules.v6 alike, so IPv6 needs nothing extra
+# here to survive a reboot.
 - name: Restore the saved rules at boot
   ansible.builtin.systemd_service:
     name: netfilter-persistent
@@ -45,14 +47,32 @@
     validate: iptables-restore --test %s
   register: firewall_rules
 
-# The three tasks below are deliberately not handlers, despite "when: changed".
+- name: Render the IPv6 ruleset
+  ansible.builtin.template:
+    src: rules.v6.j2
+    dest: "{{ firewall_v6_rules_file }}"
+    owner: root
+    group: root
+    mode: "0640"
+    backup: true
+    validate: ip6tables-restore --test %s
+  register: firewall_v6_rules
+  when: firewall_v6_manage | bool
+
+# Both files are loaded in one pass, so one flag decides whether the pass runs.
+- name: Note whether either ruleset changed
+  ansible.builtin.set_fact:
+    firewall_reload: "{{ firewall_rules is changed or firewall_v6_rules is changed }}"
+
+# The tasks below are deliberately not handlers, despite "when: firewall_reload".
 # Handlers run at the end of the play, but the whole point here is the order:
 # arm the rollback, load the rules, prove ssh still works, only then disarm.
-- name: Snapshot the live ruleset and arm the rollback  # noqa: no-handler
+- name: Snapshot the live rulesets and arm the rollback
   ansible.builtin.shell:
     cmd: |
       set -eu
       iptables-save > {{ firewall_rollback_rules }}
+      ip6tables-save > {{ firewall_v6_rollback_rules }}
       rm -f {{ firewall_rollback_ok }}
       setsid sh -c 'sleep {{ firewall_rollback_seconds }}
         if [ ! -e {{ firewall_rollback_ok }} ]; then
@@ -60,15 +80,39 @@
       {% if firewall_rules.backup_file is defined and firewall_rules.backup_file %}
           cp {{ firewall_rules.backup_file }} {{ firewall_rules_file }}
       {% endif %}
+          if [ -s {{ firewall_v6_rollback_rules }} ]; then
+            ip6tables-restore < {{ firewall_v6_rollback_rules }}
+          else
+            ip6tables -F
+            ip6tables -t nat -F
+            ip6tables -P INPUT ACCEPT
+            ip6tables -P FORWARD ACCEPT
+            ip6tables -P OUTPUT ACCEPT
+          fi
+      {% if firewall_v6_rules.backup_file is defined and firewall_v6_rules.backup_file %}
+          cp {{ firewall_v6_rules.backup_file }} {{ firewall_v6_rules_file }}
+      {% endif %}
         fi
-        rm -f {{ firewall_rollback_rules }} {{ firewall_rollback_ok }}' </dev/null >/dev/null 2>&1 &
+        rm -f {{ firewall_rollback_rules }} {{ firewall_v6_rollback_rules }} {{ firewall_rollback_ok }}' </dev/null >/dev/null 2>&1 &
   changed_when: true
-  when: firewall_rules is changed
+  when: firewall_reload | bool
 
-- name: Load the new ruleset  # noqa: no-handler
+# Note the empty-snapshot branch above: on a host that has never had a v6
+# ruleset, ip6tables-save prints nothing, and there is no "previous file" to
+# put back. Restoring that emptiness literally is impossible, so the rollback
+# reproduces what it meant in practice — no tables, everything through.
+
+- name: Load the new ruleset
   ansible.builtin.command: "iptables-restore {{ firewall_rules_file }}"
   changed_when: true
-  when: firewall_rules is changed
+  when: firewall_reload | bool
+
+- name: Load the new IPv6 ruleset
+  ansible.builtin.command: "ip6tables-restore {{ firewall_v6_rules_file }}"
+  changed_when: true
+  when:
+    - firewall_reload | bool
+    - firewall_v6_manage | bool
 
 # The ssh control socket is kept open by ControlPersist, so an existing session
 # survives even a ruleset that blocks new connections. Dropping it forces the
@@ -79,20 +123,20 @@
 - name: Prove that a new ssh connection still works
   ansible.builtin.ping:
 
-- name: Disarm the rollback  # noqa: no-handler
+- name: Disarm the rollback
   ansible.builtin.file:
     path: "{{ firewall_rollback_ok }}"
     state: touch
     owner: root
     group: root
     mode: "0644"
-  when: firewall_rules is changed
+  when: firewall_reload | bool
 
 # Enumerating every unit takes over a minute per host, and the only consumer is
 # the fail2ban restart below, which matters only when the ruleset changed.
-- name: Collect service facts  # noqa: no-handler
+- name: Collect service facts
   ansible.builtin.service_facts:
-  when: firewall_rules is changed
+  when: firewall_reload | bool
 
 # Only needed when fail2ban bans through an iptables action, in which case
 # loading a ruleset removes its f2b-* chains and it re-creates them on start.
@@ -105,5 +149,5 @@
     name: fail2ban
     state: restarted
   when:
-    - firewall_rules is changed
+    - firewall_reload | bool
     - "'fail2ban.service' in ansible_facts.services | default({})"

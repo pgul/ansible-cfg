@@ -1,0 +1,70 @@
+# {{ ansible_managed }}
+# Manual edits will be overwritten. Change roles/firewall or host_vars.
+#
+# The v4 twin is rules.v4.j2 and the shape is the same, but the variables are
+# separate (firewall_v6_*): what a host answers over IPv6 is stated explicitly,
+# not inherited from v4. See roles/firewall/defaults/main.yml.
+
+*filter
+:INPUT {{ firewall_v6_input_policy }} [0:0]
+:FORWARD {{ firewall_v6_forward_policy }} [0:0]
+:OUTPUT {{ firewall_v6_output_policy }} [0:0]
+{% for name in firewall_v6_extra_chains | sort %}
+:{{ name }} - [0:0]
+{% endfor %}
+
+# This one rule is what makes outgoing connections work under an INPUT policy
+# of DROP: the host dials out, the replies come back here.
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+# ICMPv6 is not the optional convenience that ICMP is in v4. Neighbour
+# discovery and path MTU discovery ride on it, so dropping it does not cost a
+# ping — it breaks the stack.
+-A INPUT -p ipv6-icmp -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+# Replies to the DHCPv6 client port. Inert where the address is static or comes
+# from SLAAC, and the difference between a working and a dead address where it
+# is not, so it is not made conditional.
+-A INPUT -d fe80::/64 -p udp -m udp --dport 546 -m state --state NEW -j ACCEPT
+{% for port in firewall_v6_ssh_ports %}
+-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% for port, sources in firewall_v6_restricted_tcp_ports | dictsort %}
+{% for src in sources %}
+-A INPUT -s {{ src }} -p tcp -m state --state NEW -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% endfor %}
+{% for port in firewall_v6_tcp_ports %}
+-A INPUT -p tcp -m state --state NEW -m tcp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% for port in firewall_v6_udp_ports %}
+-A INPUT -p udp -m udp --dport {{ port }} -j ACCEPT
+{% endfor %}
+{% for range in firewall_v6_udp_port_ranges %}
+-A INPUT -p udp -m udp -m multiport --dports {{ range }} -j ACCEPT
+{% endfor %}
+{% for rule in firewall_v6_extra_input_rules %}
+-A INPUT {{ rule }}
+{% endfor %}
+-A INPUT -p tcp -m state --state NEW -m tcp -j REJECT --reject-with icmp6-adm-prohibited
+{% for rule in firewall_v6_forward_rules %}
+-A FORWARD {{ rule }}
+{% endfor %}
+{% for name in firewall_v6_extra_chains | sort %}
+{% for rule in firewall_v6_extra_chains[name] %}
+-A {{ name }} {{ rule }}
+{% endfor %}
+{% endfor %}
+COMMIT
+
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+{% for rule in firewall_v6_nat_prerouting_rules %}
+-A PREROUTING {{ rule }}
+{% endfor %}
+{% for rule in firewall_v6_nat_postrouting_rules %}
+-A POSTROUTING {{ rule }}
+{% endfor %}
+COMMIT

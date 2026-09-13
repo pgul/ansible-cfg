@@ -13,9 +13,23 @@ firewall_zabbix_agent_sources:
   - 213.133.164.6
   - 91.225.123.133
   - 129.159.205.15   # was written as .15/24 by hand, i.e. the whole /24
-firewall_tcp_ports: [25, 53, 80, 443, 465, 587, 19555]
+# 9555 is QBitcoin mainnet P2P. Unlike node, brr and sin, where it is open to
+# the fleet only, here it is a public service: ho is the node outside peers are
+# meant to reach, so it is listed among the ports open to everyone rather than
+# in firewall_restricted_tcp_ports. 19555 is the testnet P2P port.
+firewall_tcp_ports: [25, 53, 80, 443, 465, 587, 9555, 19555]
 firewall_udp_ports: [53]
 firewall_udp_port_ranges: ['43200:44000']
 # The policy is DROP but this rule accepts everything, which is how it has been.
+# Not narrowed here: ho routes an OpenVPN tun0 (10.8.3.0/24) and which of its
+# paths still matter is a question for a separate pass, not for a port change.
 firewall_forward_rules:
   - '-j ACCEPT'
+
+# --- firewall, IPv6 ---
+# 9555 open to everyone here too. No v6 ruleset existed on ho at all until now,
+# and the host has no global IPv6 address today (only eth0/91.228.147.70 and
+# tun0), so this rule is provision for the address rather than a change to what
+# reaches the daemon. The rest of the v6 set comes from the role: policies DROP
+# except OUTPUT, ssh, ICMPv6, and udp-link's range.
+firewall_v6_tcp_ports: [9555]

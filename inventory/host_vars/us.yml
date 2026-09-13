@@ -5,7 +5,13 @@ zabbix_agent_user_parameters:
   - 'top,top -bn1; echo; ps wwlax'
 
 # --- firewall ---
-firewall_forward_policy: ACCEPT
+# FORWARD was the one policy in the fleet still on ACCEPT, so us forwarded
+# everything and the rules below only decorated it. Now DROP, like everywhere
+# else — but that is not a no-op, so the rules had to be completed: with ACCEPT
+# a connection opened from outside towards a VPN client was forwarded by the
+# policy, and under DROP it needs a rule of its own. The two "-d" lines added
+# below are that rule, mirroring what oc already has in both directions.
+firewall_forward_policy: DROP
 firewall_zabbix_agent_sources:
   - 213.133.161.33
   - 213.133.164.6
@@ -25,6 +31,8 @@ firewall_forward_rules:
   - '-m state --state RELATED,ESTABLISHED -j ACCEPT'
   - '-s 10.10.1.0/24 -j ACCEPT'
   - '-s 10.10.0.0/24 -j ACCEPT'
+  - '-d 10.10.1.0/24 -j ACCEPT'
+  - '-d 10.10.0.0/24 -j ACCEPT'
 firewall_extra_chains:
   InstanceServices: "{{ firewall_oracle_instance_services }}"
 # Matches on the destination address rather than blanket, as found.
@@ -37,3 +45,19 @@ firewall_nat_postrouting_rules:
   - '-s 10.10.1.0/24 -o ens3 -j MASQUERADE'
   - '-s 10.10.0.0/24 ! -d 10.10.0.0/24 -j MASQUERADE'
   - '-s 10.10.1.0/24 ! -d 10.10.1.0/24 -j MASQUERADE'
+
+# --- firewall, IPv6 ---
+# us is the only managed host that already carried a v6 ruleset, and it is kept
+# as found rather than aligned with v4: no 993, no 24554, and udp 4242 is v4
+# only. What the role adds on top is ICMPv6, DHCPv6 and udp-link's port range —
+# the last of these is not "as found", but it is what carries ssh, and us has no
+# global IPv6 address today for the difference to be visible either way.
+firewall_v6_tcp_ports: [25, 53, 80, 443, 465, 587]
+firewall_v6_udp_ports: [53]
+firewall_v6_extra_input_rules:
+  - '-p udp -m udp --sport 123 -j ACCEPT'
+  - '-p udp -m udp --dport 1194 -j ACCEPT'
+# Present and empty in the live v6 ruleset, exactly as here. Oracle's rules
+# themselves are v4 only — 169.254.0.0/16 has no v6 counterpart.
+firewall_v6_extra_chains:
+  InstanceServices: []

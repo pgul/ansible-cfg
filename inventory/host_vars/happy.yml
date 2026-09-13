@@ -28,7 +28,10 @@ users_manage_sudoers: false
 # running 7.4, while the Ubuntu hosts run agent 7.0.
 zabbix_agent_manage: false
 
-# The firewall on happy is hand-built and stays that way.
+# The firewall on happy is hand-built and stays that way — v4 and v6 alike.
+# This flag turns off the whole role, so the IPv6 ruleset the role now also
+# owns is not written here either: happy's ip6tables has INPUT policy ACCEPT
+# and Docker's own chains, and that stays a hand decision.
 firewall_manage: false
 
 # MariaDB drop-ins do not work on happy either.

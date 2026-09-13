@@ -69,3 +69,57 @@ firewall_rollback_ok: /run/firewall-rollback.ok
 # the firewall survived boot only because the services happened to start in a
 # lucky order.
 firewall_disable_nftables_service: true
+
+# ============================ IPv6 =========================================
+# A second, independent ruleset in /etc/iptables/rules.v6. netfilter-persistent
+# already restores that file at boot, so nothing extra is needed to make it
+# survive a reboot.
+#
+# The port lists are deliberately NOT shared with v4. An address list written
+# for v4 cannot appear in a v6 rule, and most services here answer on v4 only —
+# so a host opens over IPv6 exactly what its firewall_v6_* variables name, and
+# nothing more. The two exceptions below are access-critical and follow v4.
+
+# Off only where ip6tables cannot work at all — a kernel booted with
+# ipv6.disable=1 makes ip6tables-restore fail outright.
+firewall_v6_manage: true
+
+firewall_v6_rules_file: /etc/iptables/rules.v6
+
+# --- Policies ---
+firewall_v6_input_policy: DROP
+firewall_v6_forward_policy: DROP
+# Outgoing connections are allowed: OUTPUT is ACCEPT and the replies come back
+# through the RELATED,ESTABLISHED rule at the top of INPUT.
+firewall_v6_output_policy: ACCEPT
+
+# --- ssh ---
+# Follows v4: ssh must not depend on which stack the client happened to pick.
+firewall_v6_ssh_ports: "{{ firewall_ssh_ports }}"
+
+# --- Per-host openings ---
+firewall_v6_tcp_ports: []
+
+# As in v4, "port: [addresses]" — but each address carries its own prefix
+# length, since a v6 host address is /128 and a v6 network is not.
+firewall_v6_restricted_tcp_ports: {}
+firewall_v6_udp_ports: []
+
+# Follows v4 for the same reason as the ssh ports: this is udp-link's range,
+# and every ssh session to these hosts goes through it. If the client resolves
+# a host to its AAAA record, the ProxyCommand dials in over IPv6 — closing the
+# range here would lock us out of exactly the hosts that do have IPv6.
+firewall_v6_udp_port_ranges: "{{ firewall_udp_port_ranges }}"
+
+firewall_v6_extra_input_rules: []
+firewall_v6_forward_rules: []
+firewall_v6_extra_chains: {}
+
+# --- nat ---
+firewall_v6_nat_prerouting_rules:
+  - '-p tcp -m tcp --dport 22 -j REDIRECT --to-ports 1'
+  - '-p tcp -m tcp --dport 922 -j REDIRECT --to-ports 22'
+firewall_v6_nat_postrouting_rules: []
+
+# --- Rollback ---
+firewall_v6_rollback_rules: /run/firewall-rollback.v6

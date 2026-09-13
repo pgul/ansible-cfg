@@ -7,6 +7,10 @@ firewall_qbtc_peers:
   - 172.98.12.126      # spelik = backup.spelik.com
   - 104.152.210.6      # node.spelik.com
   - 153.75.233.174     # sin.spelik.com
+  # ho, added as ho.spelik.com. That name does not resolve yet — the host still
+  # answers to ho.happy.kiev.ua — so the address is what matters here, and it
+  # does not change when the record appears.
+  - 91.228.147.70      # ho = ho.spelik.com / ho.happy.kiev.ua
 
 # yamllint disable rule:line-length
 # Each rule carries Oracle's own --comment text verbatim; wrapping the lines

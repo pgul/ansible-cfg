@@ -22,6 +22,20 @@ firewall_udp_ports: [53]
 # session to it goes through the ProxyCommand.
 firewall_udp_port_ranges: ['43200:44000']
 
+# --- firewall, IPv6 ---
+# brr is the only host in the fleet with a real global IPv6 address
+# (2a0c:4ac1:4:2de::a on ens3, with a default route), and until now it had no
+# ip6tables rules at all — every port on that address was reachable from the
+# internet. The role's defaults close it: policies DROP except OUTPUT, and only
+# ssh, ICMPv6 and udp-link's range open. That last one is not optional here —
+# brr.spelik.com has an AAAA record, so the ProxyCommand can dial in over IPv6,
+# and it inherits firewall_udp_port_ranges above.
+#
+# Nothing is added to the two lists below: 9555 is restricted to the fleet's own
+# peers, whose addresses are v4, so it stays closed on IPv6.
+firewall_v6_tcp_ports: []
+firewall_v6_restricted_tcp_ports: {}
+
 # --- mariadb ---
 # The datadir is a bind mount of /vs/mariadb, and /vs is a LUKS volume unlocked
 # with a key from /run/fscryptpwd — both are "nofail" in crypttab and fstab, so
