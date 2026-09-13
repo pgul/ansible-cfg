@@ -89,26 +89,29 @@ roles/<name>/
 | 2 | `dotfiles`       | `.profile` и `.vimrc` — только если их нет               |
 | 3 | `common`         | пакеты, таймзона, синхронизация времени                  |
 | 4 | `local_scripts`  | собственные скрипты в `/usr/local/bin`                   |
-| 5 | `zabbix_agent`   | пакет из дистрибутива, конфиг шаблоном                   |
-| 6 | `mariadb`        | `mysqldump.cnf` в drop-in каталоге MariaDB; зависимость юнита от монтирования datadir |
-| 7 | `bitcoin`        | `bitcoin.conf` демона и клиентов; drop-in юнита: зависимость от монтирования, таймаут остановки |
+| 5 | `apt_updates`    | `check-updates*` в `/usr/local/bin` и `/etc/cron.d/apt-updates` — только Ubuntu |
+| 6 | `zabbix_agent`   | пакет из дистрибутива, конфиг шаблоном                   |
+| 7 | `mariadb`        | `mysqldump.cnf` в drop-in каталоге MariaDB; зависимость юнита от монтирования datadir |
+| 8 | `bitcoin`        | `bitcoin.conf` демона и клиентов; drop-in юнита: зависимость от монтирования, таймаут остановки |
 
 **Плей 2 — то, что может стоить доступа к машине. `serial: 1`, остановка при
 первой ошибке:**
 
 | # | Роль        | Что делает                                                    |
 |---|-------------|---------------------------------------------------------------|
-| 8 | `sshd`      | вход только по ключу, root без пароля                          |
-| 9 | `udp_link`  | сборка udp-link из исходников, одна версия везде               |
-|10 | `firewall`  | полное владение `/etc/iptables/rules.v4`                       |
+| 9 | `sshd`      | вход только по ключу, root без пароля                          |
+|10 | `udp_link`  | сборка udp-link из исходников, одна версия везде               |
+|11 | `firewall`  | полное владение `/etc/iptables/rules.v4`                       |
 
 Плюс `playbooks/bootstrap.yml` — разовая подготовка хоста: заводит `gul` на
 совсем новом сервере (`REMOTE_USER=root`) и доставляет биндинги dnf5 на Fedora.
 
 ### Сознательно не делаем
 
-- **`unattended-upgrades` / `dnf-automatic`** — не нужно.
-- **cron-запуск скриптов** — не нужно.
+- **`unattended-upgrades` / `dnf-automatic`** — автоустановку не включаем.
+  Пакет `unattended-upgrades` роль `apt_updates` ставит, но только ради
+  `--dry-run` в `check-updates-security`; что там в `20auto-upgrades` — не
+  трогаем.
 - **Бэкап** — настроен вручную, в Ansible не заводится.
 
 ### Что стоит автоматизировать дальше
@@ -160,6 +163,10 @@ roles/<name>/
   `/var/lib/bitcoin/blocks` (bind из `/data/bitcoin/blocks`). Без зависимости
   bitcoind стартовал бы на пустом каталоге и начал IBD с нуля. Подробности в
   разделе про bitcoin.
+- **spelik_com: `apt_updates_mailto: root@spelik.com`.** Вывод cron-заданий
+  `apt-updates` уходит на доменный root, а не в локальный ящик. На spelik и
+  node так было руками, brr и sin получают это вместе с группой; в kiev —
+  дефолт cron.
 - **happy: `zabbix_agent_manage: false`.** Конфиг агента там по старому пути
   `/etc/zabbix_agentd.conf`, без `Include`, с двумя десятками UserParameter
   плюс `SourceIP`, `ListenIP` и `StartAgents`. Общий шаблон снёс бы всё это.
@@ -434,6 +441,33 @@ localhost задаются словарём `zabbix_agent_rpc_checks` («имя:
 
 Все хосты доступны только через `~/.ssh/config` (порт 922, `ProxyCommand udp-link`),
 поэтому в инвентаре нет ни `ansible_host`, ни `ansible_port`.
+
+### Обновления apt
+
+Роль `apt_updates` раскладывает два скрипта и один cron-файл на все Ubuntu-хосты.
+Условие — `apt_updates_manage: "{{ ansible_facts.os_family == 'Debian' }}"`,
+так что happy отпадает сам, без флага в `host_vars`, а новый Ubuntu-хост
+подхватывается автоматически.
+
+Скрипты в `roles/apt_updates/files/` — как лежали на хостах, байт в байт:
+
+- `check-updates` — `apt-get upgrade --dry-run` в `/var/tmp/updates-system`,
+  затем `zabbix_sender` с ключом `system.updates`. Отправляет он **всегда 0**:
+  строка `[ -s "$OUT" ] && RES=1` закомментирована. Полезная нагрузка — сам
+  файл, который читает UserParameter `updates-list[system]` на oc и spelik.
+- `check-updates-security` — `unattended-upgrade --dry-run` в
+  `/var/tmp/updates-security`, код возврата уходит ключом `security.updates`.
+
+`/etc/cron.d/apt-updates` собирается шаблоном: каждые четыре часа autoremove,
+purge остатков `rc`, `apt-get update` и `check-updates-security`; `check-updates`
+дважды в сутки, в 8:10 и 20:10 UTC. Расписание одно на всех, переменных две:
+`apt_updates_mailto` (см. отклонения) и `apt_updates_update_timeout` — `apt-get
+update` обёрнут в `timeout 5m`. Раньше так было только на oc, теперь везде:
+зависший зеркальный сервер иначе оставляет по подвисшему процессу каждые четыре
+часа. Пустое значение убирает обёртку.
+
+Роль ставит `unattended-upgrades` и `zabbix-sender`, потому что без них скрипты
+молча не работают; на всех восьми хостах оба уже стояли.
 
 ### Принятые решения
 

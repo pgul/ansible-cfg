@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+# Manual edits will be overwritten. Change apt_updates_* variables instead.
+{% if apt_updates_mailto %}
+MAILTO={{ apt_updates_mailto }}
+
+{% endif %}
+30 1-23/4 * * * root /usr/bin/apt-get --quiet=2 -o=Dpkg::Use-Pty=0 autoremove
+35 1-23/4 * * * root /usr/bin/apt-get purge --quiet=2 -o=Dpkg::Use-Pty=0 `/usr/bin/dpkg -l | grep ^rc | awk '{ print $2 }'`
+40 1-23/4 * * * root {% if apt_updates_update_timeout %}/usr/bin/timeout {{ apt_updates_update_timeout }} {% endif %}/usr/bin/apt-get --quiet=2 -o=Dpkg::Use-Pty=0 update
+45 1-23/4 * * * root {{ apt_updates_bin_dir }}/check-updates-security
+10 8,20   * * * root {{ apt_updates_bin_dir }}/check-updates

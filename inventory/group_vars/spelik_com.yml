@@ -1,0 +1,5 @@
+---
+# Cron output from the apt housekeeping jobs goes to the domain's root mailbox
+# rather than the local one. spelik and node had this by hand; brr and sin get
+# it with the group.
+apt_updates_mailto: root@spelik.com

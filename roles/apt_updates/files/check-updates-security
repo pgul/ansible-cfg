@@ -1,0 +1,11 @@
+#! /bin/sh
+
+OUT=/var/tmp/updates-security
+
+/usr/bin/unattended-upgrade --dry-run >"$OUT.new" 2>/dev/null
+RC=$?
+[ -f "$OUT" -a ! -w "$OUT" ] && rm -rf "$OUT"
+mv "$OUT.new" "$OUT"
+#[ "$RC" = 1 ] && exit 1
+
+zabbix_sender -c /etc/zabbix/zabbix_agentd.conf -k "security.updates" -o "$RC" >/dev/null

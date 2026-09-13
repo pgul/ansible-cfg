@@ -1,0 +1,26 @@
+---
+# Ubuntu only: the scripts call apt-get and unattended-upgrade, and happy runs
+# Fedora with dnf. Derived from facts rather than switched off per host, so a
+# new Ubuntu host gets it without any host_vars.
+apt_updates_manage: "{{ ansible_facts.os_family == 'Debian' }}"
+
+apt_updates_bin_dir: /usr/local/bin
+apt_updates_scripts:
+  - check-updates
+  - check-updates-security
+
+# check-updates-security is a dry run of unattended-upgrade, and both scripts
+# report through zabbix_sender. Neither package does anything on its own:
+# automatic installation stays wherever it is on each host (see README).
+apt_updates_packages:
+  - unattended-upgrades
+  - zabbix-sender
+
+apt_updates_cron_file: /etc/cron.d/apt-updates
+
+# Where cron sends the output. Empty means the cron default: local root.
+apt_updates_mailto: ''
+
+# apt-get update runs under `timeout`, so a mirror that stops answering does not
+# leave a hung process every four hours. Empty disables the wrapper.
+apt_updates_update_timeout: 5m

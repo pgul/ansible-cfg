@@ -13,6 +13,8 @@
       when: dotfiles_manage | bool
     - common
     - local_scripts
+    - role: apt_updates
+      when: apt_updates_manage | bool
     - role: zabbix_agent
       when: zabbix_agent_manage | bool
     - role: mariadb
