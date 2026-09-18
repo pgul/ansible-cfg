@@ -1,0 +1,65 @@
+---
+# The daemon, its user and /etc/qbitcoin.conf all come from outside Ansible.
+# This role owns the one thing nothing ever shipped: rotation of the log the
+# daemon writes. Without it the file simply never stops growing — the day this
+# was written /var/log/qbitcoin.log was 11 GiB on node, 10 GiB on sin and
+# 9.7 GiB on spelik, all three born the previous day, with nothing to trim them.
+qbitcoin_manage: true
+
+qbitcoin_logrotate_config: /etc/logrotate.d/qbitcoin
+
+# --- Which logs, and how each of them is rotated ---
+#
+# Only the ones that actually exist on the host end up in the file, so the
+# default below is enough for node, sin, brr and ho and does nothing at all on
+# oc, us and happy. A host that runs more than the mainnet daemon lists the rest
+# in host_vars (spelik does).
+#
+# Each entry is a dict with a "path" plus any of the keys whose defaults follow.
+qbitcoin_logs:
+  - path: /var/log/qbitcoin.log
+
+# Daily, a month of history. The day this was written the log was growing by
+# 12 GiB on node, 16 GiB on sin and 6 GiB on spelik — at that rate thirty
+# compressed copies would not fit on sin's 59 GiB root — but that day was an
+# anomaly and is not what the daemon normally writes.
+#
+# Worth knowing if it ever repeats: sin is the host with no margin, and the
+# arithmetic there is thirty copies at about a seventh of a day's log, next to a
+# live file that is not rotated until midnight. Lower it here, or per host in
+# host_vars, if the volume comes back. The lever that would actually settle it
+# is "debug = 1" in /etc/qbitcoin.conf, but that is a decision about the daemon.
+qbitcoin_log_rotate: 30
+
+# Rotation renames the file and creates a new one in its place. The owner is not
+# cosmetic: /var/log is root:syslog drwxrwxr-x and the qbitcoin user belongs to
+# no group but its own, so it cannot create the file itself. Without "create"
+# the daemon would rotate once and then log nowhere.
+qbitcoin_log_owner: qbitcoin
+qbitcoin_log_group: qbitcoin
+qbitcoin_log_mode: "0644"
+
+# Which user and group logrotate becomes while rotating. Spelled out rather than
+# inherited from the "su root adm" in /etc/logrotate.conf, for two reasons.
+# /var/log is root:syslog drwxrwxr-x — group-writable by a group that is not
+# root — and logrotate refuses to touch a log in such a directory unless it is
+# told whom to act as: without this the stanza is a file that silently does
+# nothing on its own. And it is what makes the file valid in isolation, which is
+# what `validate: logrotate --debug` in tasks/main.yml checks — validate sees
+# only this file, never /etc/logrotate.conf. Empty falls back to the global.
+qbitcoin_log_su: root adm
+
+qbitcoin_log_compress: true
+
+# Off deliberately. delaycompress keeps the newest rotated copy uncompressed for
+# a full cycle — 16 GiB of it on sin — and buys nothing here: it exists for
+# daemons that keep writing to the old file until they are signalled, and
+# qbitcoind opens the log, writes and closes it again (verified with lsof: in
+# fifteen samples of a node writing 16 GiB a day the descriptor showed up once).
+qbitcoin_log_delaycompress: false
+
+# Same reason: because the daemon holds no descriptor, a plain rename is safe
+# and the new file is picked up on the next write, with no restart and no HUP.
+# copytruncate is for the other shape, where systemd holds the descriptor for
+# the whole life of the unit — that is spelik, and it sets this in host_vars.
+qbitcoin_log_copytruncate: false

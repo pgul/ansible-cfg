@@ -33,3 +33,29 @@ firewall_manage: false
 # so the rules matter only once the policy is tightened.
 firewall_tcp_ports: [9555]
 firewall_v6_tcp_ports: [9555]
+
+# --- qbitcoin ---
+# Both QBitcoin daemons here are Docker containers, and the log is not written
+# by the daemon at all: the unit says StandardOutput=append:/var/log/qbitcoin.log,
+# so systemd opens the file once and `docker run` holds that descriptor for the
+# whole life of the service. Renaming the file would leave it writing to the
+# renamed inode forever, and the "new" log would stay empty — hence copytruncate
+# on both, the same way the hand-made config already rotated the testnet one.
+#
+# Two consequences of the same fact, for anyone comparing this with node and sin:
+# there is no `create`, so no owner to set (copytruncate never creates a file, it
+# copies and truncates in place, keeping the original's owner) — which is just as
+# well, because spelik has no qbitcoin user at all. The service runs as
+# qecurrency and systemd opens the log as root, so the file is root:root.
+#
+# The testnet entry reproduces the hand-made /etc/logrotate.d/qbitcoin exactly —
+# daily, twelve copies, delaycompress — so that taking the file over changes
+# nothing about a rotation that has been working. Only the mainnet log is new,
+# and it is the one that had grown to 9.7 GiB unrotated.
+qbitcoin_logs:
+  - path: /var/log/qbitcoin.log
+    copytruncate: true
+  - path: /var/log/qbitcoin-testnet.log
+    copytruncate: true
+    rotate: 12
+    delaycompress: true

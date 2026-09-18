@@ -21,6 +21,8 @@
       when: mariadb_manage | bool
     - role: bitcoin
       when: bitcoin_manage | bool
+    - role: qbitcoin
+      when: qbitcoin_manage | bool
 
 # Anything that can cost us access to the host goes here: one machine at a
 # time, aborting the whole run on the first failure, so a mistake reaches one

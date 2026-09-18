@@ -1,0 +1,39 @@
+---
+# The condition is the log itself: the role rotates files the daemon already
+# writes and never invents one. That is also the honest test for "is there a
+# QBitcoin node here" across the whole fleet — the bitcoin role can ask for a
+# group created by its .deb, but here the daemon is a package on node, sin, brr
+# and ho and a Docker container running as qecurrency on spelik, so no user,
+# group or unit name is common to all of them. A path is.
+- name: Look for the logs this host is supposed to rotate
+  ansible.builtin.stat:
+    path: "{{ item.path }}"
+  loop: "{{ qbitcoin_logs }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: qbitcoin_log_stat
+
+- name: Keep the entries whose log exists
+  ansible.builtin.set_fact:
+    qbitcoin_logs_present: >-
+      {{ qbitcoin_log_stat.results
+         | selectattr('stat.exists')
+         | map(attribute='item')
+         | list }}
+
+# On oc and us there is no QBitcoin at all, and on happy only the testnet daemon
+# runs — its log is rotated by a hand-made file of the same name that this role
+# does not claim, because nothing in qbitcoin_logs matches there. Writing an
+# empty config would either clobber that file or leave logrotate an empty stanza
+# to parse; doing nothing is correct.
+- name: Rotate the QBitcoin logs
+  ansible.builtin.template:
+    src: logrotate.j2
+    dest: "{{ qbitcoin_logrotate_config }}"
+    owner: root
+    group: root
+    mode: "0644"
+    # A syntax error here breaks every rotation on the host, not just this one:
+    # logrotate stops reading at the faulty stanza.
+    validate: logrotate --debug %s
+  when: qbitcoin_logs_present | length > 0

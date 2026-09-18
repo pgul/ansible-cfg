@@ -1,0 +1,25 @@
+# {{ ansible_managed }}
+# Manual edits will be overwritten. Change roles/qbitcoin or host_vars.
+{% for log in qbitcoin_logs_present %}
+
+{{ log.path }} {
+{% if qbitcoin_log_su | length > 0 %}
+    su {{ qbitcoin_log_su }}
+{% endif %}
+    daily
+    rotate {{ log.rotate | default(qbitcoin_log_rotate) }}
+    missingok
+    notifempty
+{% if log.compress | default(qbitcoin_log_compress) | bool %}
+    compress
+{% if log.delaycompress | default(qbitcoin_log_delaycompress) | bool %}
+    delaycompress
+{% endif %}
+{% endif %}
+{% if log.copytruncate | default(qbitcoin_log_copytruncate) | bool %}
+    copytruncate
+{% else %}
+    create {{ log.mode | default(qbitcoin_log_mode) }} {{ log.owner | default(qbitcoin_log_owner) }} {{ log.group | default(qbitcoin_log_group) }}
+{% endif %}
+}
+{% endfor %}
