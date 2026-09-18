@@ -5,7 +5,20 @@
 common_time_sync_service: chrony
 common_time_sync_packages: [chrony]
 
+zabbix_agent_rpc_checks:
+  qbtc-testnet: 19556
+  qbtc: 9556
+
+zabbix_agent_user_parameters:
+  - 'btc[*],bitcoin-cli $1 | jq .$2'
+  - 'chain-checkpoint[*],/usr/local/bin/zbx-chain-checkpoint "$1" "$2" "$3" "$4"'
+  - 'systemd-active[*],systemctl is-active --quiet -- "$1" && echo 1 || echo 0'
+
 # --- firewall ---
+firewall_zabbix_agent_sources:
+  - 213.133.161.33
+  - 213.133.164.6
+  - 129.159.205.15
 # 9555 is QBitcoin mainnet P2P and is deliberately NOT public — only the other
 # nodes of the fleet reach it (the list lives in group_vars/all/firewall.yml).
 # The daemon is not running here yet; the rule is in place for when it is.
