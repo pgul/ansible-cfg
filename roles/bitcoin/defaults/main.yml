@@ -57,7 +57,20 @@ bitcoin_required_mounts: []
 # timeout would SIGKILL it half-way — set 600 on such hosts.
 bitcoin_stop_timeout_sec: ""
 
+# Hold the daemon back while the kernel's ext4lazyinit thread is still
+# initialising a freshly made filesystem. It is a kernel thread, not a unit, so
+# there is nothing for After= to point at: the drop-in adds an ExecStartPre that
+# polls for the thread and returns as soon as it is gone (at once, if it never
+# ran). On a big volume the initialisation saturates the disk for minutes, and a
+# daemon reading the chain at the same time starves everything else, udev
+# included. Gives up waiting after bitcoin_wait_ext4lazyinit_sec and starts the
+# daemon anyway; TimeoutStartSec is raised by the same amount so systemd does not
+# kill the unit while it waits.
+bitcoin_wait_ext4lazyinit: false
+bitcoin_wait_ext4lazyinit_sec: 3600
+
 # Derived: whether the drop-in has anything to say.
 bitcoin_dropin_wanted: >-
   {{ bitcoin_required_mounts | length > 0
-     or (bitcoin_stop_timeout_sec | string | length > 0) }}
+     or (bitcoin_stop_timeout_sec | string | length > 0)
+     or (bitcoin_wait_ext4lazyinit | bool) }}

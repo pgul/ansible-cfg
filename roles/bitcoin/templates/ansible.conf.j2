@@ -1,6 +1,6 @@
 # {{ ansible_managed }}
-# Manual edits will be overwritten. Change bitcoin_required_mounts and
-# bitcoin_stop_timeout_sec in host_vars.
+# Manual edits will be overwritten. Change bitcoin_required_mounts,
+# bitcoin_stop_timeout_sec and bitcoin_wait_ext4lazyinit in host_vars.
 {% if bitcoin_required_mounts | length > 0 %}
 [Unit]
 # Requires= plus After= on the mount unit of each path and of its parents. If
@@ -8,8 +8,16 @@
 # instead of starting on an empty directory.
 RequiresMountsFor={{ bitcoin_required_mounts | join(' ') }}
 {% endif %}
-{% if bitcoin_stop_timeout_sec | string | length > 0 %}
+{% if bitcoin_stop_timeout_sec | string | length > 0 or bitcoin_wait_ext4lazyinit | bool %}
 
 [Service]
+{% endif %}
+{% if bitcoin_stop_timeout_sec | string | length > 0 %}
 TimeoutStopSec={{ bitcoin_stop_timeout_sec }}
+{% endif %}
+{% if bitcoin_wait_ext4lazyinit | bool %}
+# Wait for the kernel's ext4lazyinit thread to finish; it is not a unit, so poll.
+# The start timeout covers ExecStartPre too, hence the extra room.
+TimeoutStartSec={{ bitcoin_wait_ext4lazyinit_sec | int + 90 }}
+ExecStartPre=/bin/sh -c 'n={{ bitcoin_wait_ext4lazyinit_sec }}; while pgrep -x ext4lazyinit >/dev/null && [ "$n" -gt 0 ]; do sleep 5; n=$((n-5)); done; exit 0'
 {% endif %}

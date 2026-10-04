@@ -65,3 +65,7 @@ mariadb_required_mounts: [/var/lib/mariadb]
 # datadir. Stop timeout as on sin: chainstate flush on mainnet takes minutes.
 bitcoin_required_mounts: [/var/lib/bitcoin/blocks]
 bitcoin_stop_timeout_sec: 600
+# After a reboot the kernel's ext4lazyinit thread keeps /data busy for a long
+# time, and bitcoind reading blocks at the same time starved the system so badly
+# that udev's worker for the LUKS volume was killed and /vs never mounted.
+bitcoin_wait_ext4lazyinit: true
