@@ -5,3 +5,8 @@
 local_scripts_dir: /usr/local/bin
 local_scripts_files:
   - zbx-chain-checkpoint
+
+# Scripts from files/bin/ that only some hosts need. Set in host_vars; the role
+# installs the union of both lists. blockchain-sql, for instance, is only
+# useful where the qbitcoin database lives (oc, node).
+local_scripts_extra_files: []

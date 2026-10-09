@@ -6,4 +6,4 @@
     owner: root
     group: root
     mode: "0755"
-  loop: "{{ local_scripts_files }}"
+  loop: "{{ local_scripts_files + local_scripts_extra_files }}"

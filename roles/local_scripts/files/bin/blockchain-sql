@@ -1,0 +1,24 @@
+#! /bin/sh
+
+case "$1" in
+	coinbase)	sql="SELECT SUM(value)/100000000 FROM coinbase"
+			;;
+	max_val_id)	sql="SELECT scripthash FROM txo JOIN transaction ON (tx_in = id) JOIN block ON (height = block_height) WHERE tx_type = 2 AND tx_out IS NULL AND time > UNIX_TIMESTAMP(NOW())-24*3600 GROUP BY scripthash ORDER BY SUM(value) DESC LIMIT 1"
+			;;
+	max_val_amount)	sql="SELECT SUM(value)/100000000 FROM txo JOIN transaction ON (tx_in = id) JOIN block ON (height = block_height) WHERE tx_type = 2 AND tx_out IS NULL AND time > UNIX_TIMESTAMP(NOW())-24*3600 GROUP BY scripthash ORDER BY SUM(value) DESC LIMIT 1"
+			;;
+	val_number)	sql="SELECT COUNT(distinct scripthash) FROM txo JOIN transaction ON (tx_in = id) JOIN block ON (height = block_height) WHERE tx_type = 2 AND tx_out IS NULL AND time > UNIX_TIMESTAMP(NOW())-24*3600*10"
+			;;
+	utxo_amount)	sql="SELECT SUM(value)/100000000 FROM txo WHERE tx_out IS NULL"
+			;;
+	weight)		sql="SELECT weight FROM block ORDER BY height DESC LIMIT 1"
+			;;
+	slashing_tx)	sql="SET @min_height := (SELECT MIN(height) FROM block WHERE time > UNIX_TIMESTAMP(NOW()) - 3600); SELECT COUNT(*) FROM transaction WHERE tx_type = 5 AND block_height > @min_height"
+			;;
+	upgrade_stop)	sql="SET @min_height := (SELECT MIN(height) FROM block WHERE time > UNIX_TIMESTAMP(NOW()) - 3600); SELECT COUNT(*) FROM transaction WHERE tx_type = 8 AND block_height > @min_height"
+			;;
+	*)		echo "Unknown param" >&2
+			exit 1
+			;;
+esac
+mysql -u mon -h localhost -e "$sql" -B -N "$2"

@@ -7,8 +7,14 @@ zabbix_agent_user_parameters:
   - 'check-mailq,/bin/ls /var/spool/exim4/input | grep -c -- ''-H$'''
   - 'updates-list[*],cat /var/tmp/updates-`basename $1`'
   - 'top,top -bn1; echo; ps wwlax'
-  - 'blockchain-stat[*],/etc/zabbix/externalscripts/blockchain-sql "$1" "$2"'
+  - 'blockchain-stat[*],/usr/local/bin/blockchain-sql "$1" "$2"'
   - 'chain-checkpoint[*],/usr/local/bin/zbx-chain-checkpoint "$1" "$2" "$3" "$4"'
+
+# blockchain-sql used to be called from /etc/zabbix/externalscripts, where the
+# Zabbix server keeps its external checks. The agent now uses the copy that
+# local_scripts installs; the old file is left in place.
+local_scripts_extra_files:
+  - blockchain-sql
 
 # --- firewall ---
 firewall_zabbix_agent_sources:
