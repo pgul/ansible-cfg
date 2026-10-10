@@ -1,0 +1,22 @@
+---
+# Cherry Servers KVM (84.32.110.20), Ubuntu 26.04. The root is a LUKS2 volume
+# on vda2 (LVM vg0: root + swap inside), unlocked in the initrd by the
+# luks-remote dracut module with a passphrase fetched from us over ssh; the
+# initrd also runs an sshd on port 2222 for a manual unlock. GRUB has a
+# superuser password and no recovery entries. None of that is role-managed.
+
+# chrony, not systemd-timesyncd: the 26.04 cloud image ships chrony and has no
+# timesyncd unit at all, same as brr and sin.
+common_time_sync_service: chrony
+common_time_sync_packages: [chrony]
+
+# Not a bitcoin node of any kind.
+bitcoin_manage: false
+qbitcoin_manage: false
+
+# --- firewall ---
+# Only ssh (22/922 with the usual redirects) and the zabbix agent from the
+# default sources. udp-link's port range: without it the host is unreachable.
+firewall_tcp_ports: []
+firewall_udp_ports: []
+firewall_udp_port_ranges: ['43200:44000']
