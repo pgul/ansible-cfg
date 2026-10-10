@@ -10,9 +10,14 @@
 common_time_sync_service: chrony
 common_time_sync_packages: [chrony]
 
+zabbix_agent_rpc_checks:
+  qbtc: 9556
+
+zabbix_agent_user_parameters:
+  - 'systemd-active[*],systemctl is-active --quiet -- "$1" && echo 1 || echo 0'
+
 # Not a bitcoin node of any kind.
 bitcoin_manage: false
-qbitcoin_manage: false
 
 # --- firewall ---
 # Only ssh (22/922 with the usual redirects) and the zabbix agent from the
