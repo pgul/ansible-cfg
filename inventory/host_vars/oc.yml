@@ -52,8 +52,8 @@ firewall_forward_rules:
   - '-d 213.133.161.32/29 -o tun+ -j ACCEPT'
   - '-s 10.10.0.0/23 -i tun+ -j ACCEPT'
   - '-d 10.10.0.0/23 -o tun+ -j ACCEPT'
-firewall_extra_chains:
-  InstanceServices: "{{ firewall_oracle_instance_services }}"
+#firewall_extra_chains:
+#  InstanceServices: "{{ firewall_oracle_instance_services }}"
 firewall_nat_prerouting_rules:
   - '-p tcp -m addrtype --dst-type LOCAL -m tcp --dport 22 -j REDIRECT --to-ports 1'
   - '-p tcp -m addrtype --dst-type LOCAL -m tcp --dport 922 -j REDIRECT --to-ports 22'
