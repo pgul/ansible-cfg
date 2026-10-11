@@ -34,12 +34,10 @@ firewall_zabbix_server_sources:
   - 195.181.242.215
   - 172.98.12.126
   - 104.152.210.6
-  # brr and sin. Their agents were stock until recently — Server=127.0.0.1 and
-  # no Hostname — so nothing here ever had to let them in. Now the role points
-  # them at zabbix.spelik.com (= this host) and they fetch active checks over
-  # 10051, which is open by address, not to everyone.
   - 5.175.211.176        # brr.spelik.com
   - 153.75.233.174       # sin.spelik.com
+  - 185.223.253.209      # alpha.spelik.com
+  - 84.32.110.20         # cherry.spelik.com
 firewall_tcp_ports: [24554, 25, 53, 80, 443, 5222, 5223, 5269, 5443, 9555, 9777]
 firewall_udp_ports: [53]
 firewall_udp_port_ranges: ['43200:44000', '60000:61000']

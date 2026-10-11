@@ -35,12 +35,15 @@ firewall_udp_ports: [53]
 firewall_udp_port_ranges: ['43200:44000']
 
 # --- mariadb ---
-# The datadir is a bind mount of /vs/mariadb, and /vs is a LUKS volume unlocked
-# with a key from /run/fscryptpwd — both are "nofail" in crypttab and fstab, so
-# a boot without the key succeeds with /var/lib/mariadb left as an empty
-# directory. Without this dependency mariadb would start on it and initialise
-# a fresh, empty database. With it, the service fails until the volume is
-# mounted and has to be started by hand afterwards: `systemctl start mariadb`.
+# The datadir is a bind mount of /vs/mariadb. Since 2026-10-10 the root fs is a
+# LUKS2 volume too (sda4, unlocked in the initrd by the luks-remote dracut
+# module with the passphrase from us); /vs (vg0/crypto) is opened with the same
+# passphrase, handed over in /run/fscryptpwd and erased right after
+# (keyfile-erase). Both are "nofail", so a boot without /vs succeeds with
+# /var/lib/mariadb left as an empty directory. Without this dependency mariadb
+# would start on it and initialise a fresh, empty database. With it, the service
+# fails until the volume is mounted and has to be started by hand afterwards:
+# `systemctl start mariadb`.
 mariadb_required_mounts: [/var/lib/mariadb]
 
 # --- bitcoin ---
