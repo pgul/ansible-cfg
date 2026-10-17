@@ -4,7 +4,7 @@ udp_link_manage: true
 # The version every host should end up on. It is both the git tag (prefixed
 # with "v") and the version debian/changelog carries at that tag, which is what
 # lets the role tell "already current" from "needs rebuilding".
-udp_link_version: "0.6"
+udp_link_version: "0.7"
 udp_link_git_ref: "v{{ udp_link_version }}"
 
 # https rather than git@github.com: the repository is public, so no key is
