@@ -41,10 +41,12 @@ usage() {
 chain=$1 field=$2 period=$3 lag=$4
 
 case $chain in
+    qbtc)         port=9556  ;;
     qecr)         port=9667  ;;
     erub)         port=9778  ;;
-    qbtc)         port=9556  ;;
     qbtc-testnet) port=19556 ;;
+    qecr-testnet) port=19667 ;;
+    erub-testnet) port=19778 ;;
     *) echo "unknown chain: $chain" >&2; exit 1 ;;
 esac
 

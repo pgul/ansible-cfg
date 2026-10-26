@@ -1,7 +1,7 @@
 # {{ ansible_managed }}
 # Manual edits will be overwritten. Change host_vars/{{ inventory_hostname }}.yml.
 {% for name, port in zabbix_agent_rpc_checks | dictsort %}
-UserParameter={{ name }}[*],curl -s -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","account":1,"method":"$1","params":[]}' http://127.0.0.1:{{ port }} | jq .result.$2
+UserParameter={{ name }}[*],/usr/local/bin/zbx-crypto-rpc "{{ name }}" "$2" "$3"
 {% endfor %}
 {% for line in zabbix_agent_user_parameters %}
 UserParameter={{ line }}

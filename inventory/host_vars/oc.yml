@@ -1,7 +1,11 @@
 ---
 zabbix_agent_rpc_checks:
+  qbtc: 9556
   qecr: 9667
   erub: 9778
+  qbtc_testnet: 19556
+  qecr_testnet: 19667
+  erub_testnet: 19778
 
 zabbix_agent_user_parameters:
   - 'check-mailq,/bin/ls /var/spool/exim4/input | grep -c -- ''-H$'''
@@ -9,6 +13,7 @@ zabbix_agent_user_parameters:
   - 'top,top -bn1; echo; ps wwlax'
   - 'blockchain-stat[*],/usr/local/bin/blockchain-sql "$1" "$2"'
   - 'chain-checkpoint[*],/usr/local/bin/zbx-chain-checkpoint "$1" "$2" "$3" "$4"'
+  - 'cryptonode-rpc[*],/usr/local/bin/zbx-crypto-rpc "$1" "$2" "$3"'
 
 # blockchain-sql used to be called from /etc/zabbix/externalscripts, where the
 # Zabbix server keeps its external checks. The agent now uses the copy that

@@ -1,0 +1,84 @@
+#! /bin/sh
+set -eu
+
+usage() {
+    echo "usage: ${0##*/} <chain> <command> [<param>]" >&2
+    exit 1
+}
+
+[ $# -eq 2 -o $# -eq 3 ] || usage
+chain="$1" cmd="$2" param="${3:-}"
+
+case $chain in
+    qbtc)         port=9556  ;;
+    qecr)         port=9667  ;;
+    erub)         port=9778  ;;
+    qbtc-testnet) port=19556 ;;
+    qecr-testnet) port=19667 ;;
+    erub-testnet) port=19778 ;;
+    *) echo "unknown chain: $chain" >&2; exit 1 ;;
+esac
+
+url="http://127.0.0.1:$port/"
+
+conf="${ZBX_CHECKPOINT_CONF:-/etc/zabbix/crypto-rpc.conf}"
+auth=
+if [ -r "$conf" ]; then
+    auth=$(awk -v c="$chain" '$1 == c { print $2; exit }' "$conf")
+fi
+
+rpc() {
+    body=$(printf '{"jsonrpc":"1.0","id":"zbx-crypto-rpc","method":"%s","params":[]}' "$1")
+
+    if [ -n "$auth" ]; then
+        reply=$(printf 'user = "%s"\n' "$auth" |
+                curl -sS -K - --max-time 10 -w '\n%{http_code}' \
+                     -H 'content-type: application/json' --data-binary "$body" "$url")
+    else
+        reply=$(curl -sS --max-time 10 -w '\n%{http_code}' \
+                     -H 'content-type: application/json' --data-binary "$body" "$url")
+    fi
+
+    code=$(printf '%s' "$reply" | tail -n 1)
+    json=$(printf '%s' "$reply" | sed '$d')
+
+    case $code in
+        # A bitcoin-style RPC reports a method error as 500 with the error in
+        # the body, so that one is parsed rather than rejected.
+        200|500) ;;
+        401|403) echo "${0##*/}: $1: rpc $code, credentials for $chain in $conf?" >&2
+                 return 1 ;;
+        *)       echo "${0##*/}: $1: rpc http $code" >&2
+                 return 1 ;;
+    esac
+
+    # -e so that a null result fails instead of printing "null".
+    printf '%s' "$json" | jq -e -r '
+        if .error != null
+        then ("rpc " + (.error.message // (.error | tostring))) | halt_error(1)
+        else .result end'
+}
+
+case $cmd in
+    getblockchaininfo | \
+    getpeerinfo       | \
+    getnetworkinfo    | \
+    getindexinfo      | \
+    getmempoolinfo    | \
+    getwalletinfo     | \
+    getbestblockhash  | \
+    getblockcount     )
+	response=$(rpc "$cmd")
+	;;
+    *)
+	echo "${0##*/}: unknown command: $cmd" >&2
+	usage
+	exit 1
+	;;
+esac
+
+if [ -n "$param" ]; then
+    printf '%s' "$response" | jq -e -r ".${param}"
+else
+    printf '%s\n' "$response"
+fi
