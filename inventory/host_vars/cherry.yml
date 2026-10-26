@@ -14,6 +14,7 @@ zabbix_agent_rpc_checks:
   qbtc: 9556
 
 zabbix_agent_user_parameters:
+  - 'chain-checkpoint[*],/usr/local/bin/zbx-chain-checkpoint "$1" "$2" "$3" "$4"'
   - 'systemd-active[*],systemctl is-active --quiet -- "$1" && echo 1 || echo 0'
 
 # Not a bitcoin node of any kind.

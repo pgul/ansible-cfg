@@ -1,5 +1,6 @@
 ---
 zabbix_agent_rpc_checks:
+  qbtc: 9556
   qbtc-testnet: 19556
 
 zabbix_agent_user_parameters:

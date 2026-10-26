@@ -1,5 +1,6 @@
 ---
 zabbix_agent_rpc_checks:
+  qbtc: 9556
   qecr: 9667
   erub: 9778
   erub-testnet: 19778
