@@ -154,7 +154,10 @@ else
     hash=$(rpc getblockhash "[$h]")
 
     # A state directory that cannot be written to costs speed, not answers.
-    printf '%s %s %s\n' "$t" "$h" "$hash" > "$state.new" 2>/dev/null &&
+    # stderr is silenced before stdout is redirected on purpose: the shell
+    # reports a redirection it cannot open on its own stderr, and the agent
+    # hands that line to the server as the value.
+    printf '%s %s %s\n' "$t" "$h" "$hash" 2>/dev/null > "$state.new" &&
         mv "$state.new" "$state" 2>/dev/null || true
 fi
 

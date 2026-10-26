@@ -1,11 +1,7 @@
 ---
 zabbix_agent_rpc_checks:
-  qbtc: 9556
   qecr: 9667
   erub: 9778
-  qbtc_testnet: 19556
-  qecr_testnet: 19667
-  erub_testnet: 19778
 
 zabbix_agent_user_parameters:
   - 'check-mailq,/bin/ls /var/spool/exim4/input | grep -c -- ''-H$'''

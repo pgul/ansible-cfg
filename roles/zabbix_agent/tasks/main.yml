@@ -25,6 +25,18 @@
     group: zabbix
     mode: "0755"
 
+- name: Ensure the state directory for UserParameter scripts exists
+  # zbx-chain-checkpoint caches its answer here. The Debian package does not
+  # create the directory on every release (cherry, Ubuntu 26.04, had none), and
+  # without it every poll bisects from scratch and, with dash, reports the
+  # failed redirection as the item value.
+  ansible.builtin.file:
+    path: /var/lib/zabbix
+    state: directory
+    owner: zabbix
+    group: zabbix
+    mode: "0750"
+
 - name: Ensure the UserParameter directory exists
   ansible.builtin.file:
     path: "{{ zabbix_agent_include_dir }}"
