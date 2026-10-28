@@ -3,8 +3,9 @@ zabbix_agent_rpc_checks:
   qbtc: 9556
   qecr: 9667
   erub: 9778
-  erub-testnet: 19778
   qbtc-testnet: 19556
+  qecr-testnet: 19667
+  erub-testnet: 19778
 
 zabbix_agent_user_parameters:
   - 'chain-checkpoint[*],/usr/local/bin/zbx-chain-checkpoint "$1" "$2" "$3" "$4"'
